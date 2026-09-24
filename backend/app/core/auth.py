@@ -1,17 +1,17 @@
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
-from jose import jwt, JWTError
-from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status, Request
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from pydantic import BaseModel, EmailStr
 import logging
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from app.core.config import get_settings
+from app.db.models import AuditLog, User, UserRole
 from app.db.session import get_async_session
-from app.db.models import User, UserRole, AuditLog
+from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from pydantic import BaseModel, EmailStr
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -27,36 +27,36 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    sub: Optional[str] = None
-    role: Optional[str] = None
+    sub: str | None = None
+    role: str | None = None
     permissions: list[str] = []
 
 
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
     role: UserRole = UserRole.TRADER
 
 
 class UserResponse(BaseModel):
     id: int
     email: str
-    full_name: Optional[str]
+    full_name: str | None
     role: UserRole
     is_active: bool
     is_superuser: bool
     created_at: datetime
-    last_login: Optional[datetime]
+    last_login: datetime | None
 
     class Config:
         from_attributes = True
 
 
 class UserUpdate(BaseModel):
-    full_name: Optional[str] = None
-    role: Optional[UserRole] = None
-    is_active: Optional[bool] = None
+    full_name: str | None = None
+    role: UserRole | None = None
+    is_active: bool | None = None
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -67,28 +67,28 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=30)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=30)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.API_SECRET_KEY, algorithm="HS256")
     return encoded_jwt
 
 
-async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
+async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
     result = await db.execute(select(User).where(User.email == email))
     return result.scalar_one_or_none()
 
 
-async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
+async def get_user_by_id(db: AsyncSession, user_id: int) -> User | None:
     result = await db.execute(select(User).where(User.id == user_id))
     return result.scalar_one_or_none()
 
 
-async def authenticate_user(db: AsyncSession, email: str, password: str) -> Optional[User]:
+async def authenticate_user(db: AsyncSession, email: str, password: str) -> User | None:
     user = await get_user_by_email(db, email)
     if not user:
         return None
@@ -156,14 +156,14 @@ def require_permission(*permissions: str):
 async def create_audit_log(
     db: AsyncSession,
     action: str,
-    user_id: Optional[int] = None,
-    resource_type: Optional[str] = None,
-    resource_id: Optional[str] = None,
-    details: Optional[Dict[str, Any]] = None,
-    ip_address: Optional[str] = None,
-    user_agent: Optional[str] = None,
+    user_id: int | None = None,
+    resource_type: str | None = None,
+    resource_id: str | None = None,
+    details: dict[str, Any] | None = None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
     status: str = "success",
-    error_message: Optional[str] = None,
+    error_message: str | None = None,
 ) -> None:
     audit_log = AuditLog(
         user_id=user_id,
@@ -180,7 +180,7 @@ async def create_audit_log(
     await db.commit()
 
 
-def get_client_info(request: Request) -> Dict[str, Optional[str]]:
+def get_client_info(request: Request) -> dict[str, str | None]:
     return {
         "ip": request.client.host if request.client else None,
         "user_agent": request.headers.get("user-agent"),

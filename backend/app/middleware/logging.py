@@ -1,18 +1,19 @@
+import logging
 import time
+import traceback
 import uuid
+
+from fastapi import FastAPI
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response, JSONResponse
+from starlette.responses import JSONResponse
 from starlette.types import ASGIApp
-from fastapi import FastAPI
-import logging
-import traceback
 
 logger = logging.getLogger(__name__)
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: ASGIApp, excluded_paths: set = None):
+    def __init__(self, app: ASGIApp, excluded_paths: set | None = None):
         super().__init__(app)
         self.excluded_paths = excluded_paths or {"/health", "/health/live", "/health/ready", "/metrics", "/docs", "/openapi.json", "/redoc"}
 
@@ -77,7 +78,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         try:
             return await call_next(request)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             correlation_id = getattr(request.state, "correlation_id", str(uuid.uuid4()))
 
             logger.error(

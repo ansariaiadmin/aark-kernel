@@ -2,20 +2,21 @@ import json
 import os
 import re
 from contextlib import asynccontextmanager
+
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, constr
-import httpx
 
-from app.core.config import get_settings
-from app.core.logging import setup_logging, get_logger
-from app.middleware.logging import setup_middleware
-from app.db.session import engine
-from app.db.init_db import init_db
 from app.agent.brain import AgentBrain
-from app.risk_engine.evaluator import DeterministicRiskEngine, RiskProfile
-from app.agent.registry import agent_registry, AgentConfig, AgentMessage
+from app.agent.registry import AgentConfig, AgentMessage, agent_registry
 from app.api.v1 import health
+from app.core.config import get_settings
+from app.core.logging import get_logger, setup_logging
+from app.db.init_db import init_db
+from app.db.session import engine
+from app.middleware.logging import setup_middleware
+from app.risk_engine.evaluator import DeterministicRiskEngine, RiskProfile
 
 settings = get_settings()
 
@@ -80,7 +81,7 @@ def get_vault_token() -> str:
             with open(CONFIG_FILE, "r") as f:
                 data = json.load(f)
                 return data.get("api_key", "")
-        except Exception:
+        except Exception:  # noqa: BLE001
             return ""
     return ""
 
@@ -130,8 +131,8 @@ async def nobitex_status():
                     "message": "اتصال مستقیم و امن تایید شد",
                 }
             return {"connected": False, "message": "توکن نامعتبر یا منقضی شده"}
-    except Exception as e:
-        return {"connected": False, "message": f"عدم برقراری ارتباط: {str(e)}"}
+    except Exception as e:  # noqa: BLE001
+        return {"connected": False, "message": f"عدم برقراری ارتباط: {e!s}"}
 
 
 @app.post("/api/v1/nobitex/save-key")

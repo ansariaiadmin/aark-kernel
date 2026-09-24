@@ -1,10 +1,12 @@
-from typing import List, Dict, Any, Optional, AsyncGenerator
-from pydantic import BaseModel, Field
-from enum import Enum
 import json
-import httpx
 import logging
-from dataclasses import dataclass, field
+from collections.abc import AsyncGenerator
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any
+
+import httpx
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +30,7 @@ class ModelConfig:
     name: str
     provider: ModelProvider
     base_url: str
-    api_key: Optional[str] = None
+    api_key: str | None = None
     max_tokens: int = 4096
     temperature: float = 0.2
     supports_tools: bool = False
@@ -39,39 +41,39 @@ class ModelConfig:
 class ChatMessage(BaseModel):
     role: MessageRole
     content: str
-    tool_calls: Optional[List[Dict[str, Any]]] = None
-    tool_call_id: Optional[str] = None
-    name: Optional[str] = None
+    tool_calls: list[dict[str, Any]] | None = None
+    tool_call_id: str | None = None
+    name: str | None = None
 
 
 class ToolDefinition(BaseModel):
     name: str
     description: str
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
 
 
 class ChatCompletionRequest(BaseModel):
     model: str
-    messages: List[ChatMessage]
-    tools: Optional[List[ToolDefinition]] = None
-    tool_choice: Optional[str] = "auto"
+    messages: list[ChatMessage]
+    tools: list[ToolDefinition] | None = None
+    tool_choice: str | None = "auto"
     temperature: float = 0.2
     max_tokens: int = 4096
     stream: bool = False
-    format: Optional[str] = None
+    format: str | None = None
 
 
 class ChatCompletionResponse(BaseModel):
     id: str
     model: str
-    choices: List[Dict[str, Any]]
-    usage: Dict[str, int]
+    choices: list[dict[str, Any]]
+    usage: dict[str, int]
 
 
 class ModelRouter:
     def __init__(self):
-        self.models: Dict[str, ModelConfig] = {}
-        self.default_model: Optional[str] = None
+        self.models: dict[str, ModelConfig] = {}
+        self.default_model: str | None = None
 
     def register_model(self, config: ModelConfig) -> None:
         self.models[config.name] = config
@@ -79,14 +81,14 @@ class ModelRouter:
             self.default_model = config.name
         logger.info(f"Registered model: {config.name} ({config.provider.value})")
 
-    def get_model(self, name: Optional[str] = None) -> ModelConfig:
+    def get_model(self, name: str | None = None) -> ModelConfig:
         if name and name in self.models:
             return self.models[name]
         if self.default_model:
             return self.models[self.default_model]
         raise ValueError("No model available")
 
-    def list_models(self) -> List[Dict[str, Any]]:
+    def list_models(self) -> list[dict[str, Any]]:
         return [
             {
                 "name": m.name,
@@ -101,20 +103,20 @@ class ModelRouter:
 
 class ConversationMemory:
     def __init__(self, max_messages: int = 50, max_tokens: int = 8000):
-        self.messages: List[ChatMessage] = []
+        self.messages: list[ChatMessage] = []
         self.max_messages = max_messages
         self.max_tokens = max_tokens
-        self.summary: Optional[str] = None
+        self.summary: str | None = None
 
     def add_message(self, message: ChatMessage) -> None:
         self.messages.append(message)
         self._trim()
 
-    def add_messages(self, messages: List[ChatMessage]) -> None:
+    def add_messages(self, messages: list[ChatMessage]) -> None:
         self.messages.extend(messages)
         self._trim()
 
-    def get_messages(self, include_summary: bool = True) -> List[ChatMessage]:
+    def get_messages(self, include_summary: bool = True) -> list[ChatMessage]:
         result = []
         if include_summary and self.summary:
             result.append(ChatMessage(role=MessageRole.SYSTEM, content=f"Conversation summary: {self.summary}"))
@@ -142,7 +144,7 @@ class ConversationMemory:
             response = await llm_client.chat(messages, temperature=0.1, max_tokens=200)
             self.summary = response.choices[0]["message"]["content"]
             self.messages = self.messages[-10:]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning(f"Failed to generate summary: {e}")
 
 
@@ -152,27 +154,27 @@ class LLMClient:
 
     async def chat(
         self,
-        messages: List[ChatMessage],
-        model: Optional[str] = None,
-        tools: Optional[List[ToolDefinition]] = None,
-        tool_choice: Optional[str] = "auto",
+        messages: list[ChatMessage],
+        model: str | None = None,
+        tools: list[ToolDefinition] | None = None,
+        tool_choice: str | None = "auto",
         temperature: float = 0.2,
         max_tokens: int = 4096,
         stream: bool = False,
-        format: Optional[str] = None,
+        format: str | None = None,
     ) -> ChatCompletionResponse:
         model_config = self.router.get_model(model)
         return await self._call_provider(model_config, messages, tools, tool_choice, temperature, max_tokens, stream, format)
 
     async def stream_chat(
         self,
-        messages: List[ChatMessage],
-        model: Optional[str] = None,
-        tools: Optional[List[ToolDefinition]] = None,
-        tool_choice: Optional[str] = "auto",
+        messages: list[ChatMessage],
+        model: str | None = None,
+        tools: list[ToolDefinition] | None = None,
+        tool_choice: str | None = "auto",
         temperature: float = 0.2,
         max_tokens: int = 4096,
-        format: Optional[str] = None,
+        format: str | None = None,
     ) -> AsyncGenerator[str, None]:
         model_config = self.router.get_model(model)
         async for chunk in self._stream_provider(model_config, messages, tools, tool_choice, temperature, max_tokens, format):
@@ -181,13 +183,13 @@ class LLMClient:
     async def _call_provider(
         self,
         config: ModelConfig,
-        messages: List[ChatMessage],
-        tools: Optional[List[ToolDefinition]],
-        tool_choice: Optional[str],
+        messages: list[ChatMessage],
+        tools: list[ToolDefinition] | None,
+        tool_choice: str | None,
         temperature: float,
         max_tokens: int,
         stream: bool,
-        format: Optional[str],
+        format: str | None,
     ) -> ChatCompletionResponse:
         if config.provider == ModelProvider.OLLAMA:
             return await self._call_ollama(config, messages, tools, tool_choice, temperature, max_tokens, stream, format)
@@ -199,12 +201,12 @@ class LLMClient:
     async def _stream_provider(
         self,
         config: ModelConfig,
-        messages: List[ChatMessage],
-        tools: Optional[List[ToolDefinition]],
-        tool_choice: Optional[str],
+        messages: list[ChatMessage],
+        tools: list[ToolDefinition] | None,
+        tool_choice: str | None,
         temperature: float,
         max_tokens: int,
-        format: Optional[str],
+        format: str | None,
     ) -> AsyncGenerator[str, None]:
         if config.provider == ModelProvider.OLLAMA:
             async for chunk in self._stream_ollama(config, messages, tools, tool_choice, temperature, max_tokens, format):
@@ -215,13 +217,13 @@ class LLMClient:
     async def _call_ollama(
         self,
         config: ModelConfig,
-        messages: List[ChatMessage],
-        tools: Optional[List[ToolDefinition]],
-        tool_choice: Optional[str],
+        messages: list[ChatMessage],
+        tools: list[ToolDefinition] | None,
+        tool_choice: str | None,
         temperature: float,
         max_tokens: int,
         stream: bool,
-        format: Optional[str],
+        format: str | None,
     ) -> ChatCompletionResponse:
         payload = {
             "model": config.name,
@@ -249,12 +251,12 @@ class LLMClient:
     async def _stream_ollama(
         self,
         config: ModelConfig,
-        messages: List[ChatMessage],
-        tools: Optional[List[ToolDefinition]],
-        tool_choice: Optional[str],
+        messages: list[ChatMessage],
+        tools: list[ToolDefinition] | None,
+        tool_choice: str | None,
         temperature: float,
         max_tokens: int,
-        format: Optional[str],
+        format: str | None,
     ) -> AsyncGenerator[str, None]:
         payload = {
             "model": config.name,
@@ -284,13 +286,13 @@ class LLMClient:
     async def _call_openai(
         self,
         config: ModelConfig,
-        messages: List[ChatMessage],
-        tools: Optional[List[ToolDefinition]],
-        tool_choice: Optional[str],
+        messages: list[ChatMessage],
+        tools: list[ToolDefinition] | None,
+        tool_choice: str | None,
         temperature: float,
         max_tokens: int,
         stream: bool,
-        format: Optional[str],
+        format: str | None,
     ) -> ChatCompletionResponse:
         headers = {"Authorization": f"Bearer {config.api_key}", "Content-Type": "application/json"}
         payload = {

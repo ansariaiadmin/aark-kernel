@@ -1,48 +1,44 @@
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
+from typing import Any
 
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from pydantic import BaseModel, Field
+
+from app.core.config import get_settings
+from app.core.logging import get_logger
 from app.services.trading import (
     NobitexClient,
     OrderManager,
-    PortfolioManager,
     OrderRequest,
-    OrderResponse,
     OrderSide,
     OrderType,
-    OrderStatus,
-    Position,
-    Balance,
-    Exchange,
+    PortfolioManager,
 )
-from app.core.config import get_settings
-from app.core.logging import get_logger
 
 router = APIRouter(tags=["Trading Engine"])
 settings = get_settings()
 logger = get_logger(__name__)
 
 # Global instances (in production, use dependency injection)
-_nobitex_client: Optional[NobitexClient] = None
-_order_manager: Optional[OrderManager] = None
-_portfolio_manager: Optional[PortfolioManager] = None
+_nobitex_client: NobitexClient | None = None
+_order_manager: OrderManager | None = None
+_portfolio_manager: PortfolioManager | None = None
 
 
 async def get_nobitex_client() -> NobitexClient:
     global _nobitex_client
     if _nobitex_client is None:
         # Get API key from vault
-        import os
         import json
+        import os
         CONFIG_FILE = os.path.expanduser("~/.aark/nobitex.vault")
         api_key = ""
         if os.path.exists(CONFIG_FILE):
             try:
                 with open(CONFIG_FILE) as f:
                     api_key = json.load(f).get("api_key", "")
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
         if not api_key:
             raise HTTPException(status_code=400, detail="Nobitex API key not configured")
@@ -69,36 +65,36 @@ class PlaceOrderRequest(BaseModel):
     side: str = Field(..., description="buy or sell")
     order_type: str = Field(..., description="market, limit, stop, stop_limit")
     quantity: float = Field(..., gt=0, description="Order quantity")
-    price: Optional[float] = Field(None, description="Limit price (required for limit orders)")
-    stop_price: Optional[float] = Field(None, description="Stop price (required for stop orders)")
-    client_order_id: Optional[str] = Field(None, description="Client-defined order ID")
+    price: float | None = Field(None, description="Limit price (required for limit orders)")
+    stop_price: float | None = Field(None, description="Stop price (required for stop orders)")
+    client_order_id: str | None = Field(None, description="Client-defined order ID")
 
 
 class PlaceOrderResponse(BaseModel):
     order_id: str
-    client_order_id: Optional[str]
+    client_order_id: str | None
     symbol: str
     side: str
     order_type: str
     quantity: float
-    price: Optional[float]
+    price: float | None
     status: str
     filled_quantity: float
-    avg_fill_price: Optional[float]
-    error: Optional[str] = None
+    avg_fill_price: float | None
+    error: str | None = None
 
 
 class OrderResponseModel(BaseModel):
     order_id: str
-    client_order_id: Optional[str]
+    client_order_id: str | None
     symbol: str
     side: str
     order_type: str
     quantity: float
-    price: Optional[float]
+    price: float | None
     status: str
     filled_quantity: float
-    avg_fill_price: Optional[float]
+    avg_fill_price: float | None
     commission: float
     timestamp: datetime
 
@@ -145,7 +141,7 @@ async def place_order(
 async def cancel_order(
     order_id: str,
     manager: OrderManager = Depends(get_order_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     success = await manager.cancel_order(order_id)
     if not success:
         raise HTTPException(status_code=404, detail="Order not found or cannot be cancelled")
@@ -176,11 +172,11 @@ async def get_order(
     )
 
 
-@router.get("/orders", response_model=List[OrderResponseModel])
+@router.get("/orders", response_model=list[OrderResponseModel])
 async def list_orders(
-    symbol: Optional[str] = None,
+    symbol: str | None = None,
     manager: OrderManager = Depends(get_order_manager),
-) -> List[OrderResponseModel]:
+) -> list[OrderResponseModel]:
     orders = await manager.refresh_all()
     if symbol:
         orders = [o for o in orders if o.symbol == symbol]
@@ -203,10 +199,10 @@ async def list_orders(
     ]
 
 
-@router.get("/portfolio/balances", response_model=List[Dict[str, Any]])
+@router.get("/portfolio/balances", response_model=list[dict[str, Any]])
 async def get_balances(
     manager: PortfolioManager = Depends(get_portfolio_manager),
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     await manager.refresh_balances()
     return [
         {
@@ -219,10 +215,10 @@ async def get_balances(
     ]
 
 
-@router.get("/portfolio/positions", response_model=List[Dict[str, Any]])
+@router.get("/portfolio/positions", response_model=list[dict[str, Any]])
 async def get_positions(
     manager: PortfolioManager = Depends(get_portfolio_manager),
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     await manager.refresh_positions()
     return [
         {
@@ -244,7 +240,7 @@ async def get_positions(
 @router.get("/portfolio/pnl")
 async def get_pnl(
     manager: PortfolioManager = Depends(get_portfolio_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     pnl = manager.get_pnl_summary()
     return {
         "unrealized_pnl": float(pnl["unrealized_pnl"]),
@@ -256,7 +252,7 @@ async def get_pnl(
 @router.get("/portfolio/value")
 async def get_portfolio_value(
     manager: PortfolioManager = Depends(get_portfolio_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     await manager.refresh_balances()
     # Get prices for all non-IRT assets
     prices = {}
@@ -264,10 +260,10 @@ async def get_portfolio_value(
     for asset in manager.balances:
         if asset != "IRT":
             try:
-                ticker = await client.get_ticker(f"{asset}USDT")
+                await client.get_ticker(f"{asset}USDT")
                 # Extract price from ticker
-                prices[f"{asset}IRT"] = Decimal("0")  # Placeholder
-            except Exception:
+                prices[f"{asset}IRT"] = Decimal(0)  # Placeholder
+            except Exception:  # noqa: BLE001
                 pass
 
     total = await manager.get_total_portfolio_value(prices)
@@ -276,10 +272,10 @@ async def get_portfolio_value(
 
 @router.post("/orders/batch")
 async def place_batch_orders(
-    orders: List[PlaceOrderRequest],
+    orders: list[PlaceOrderRequest],
     background_tasks: BackgroundTasks,
     manager: OrderManager = Depends(get_order_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     results = []
     for req in orders:
         try:
@@ -301,7 +297,7 @@ async def place_batch_orders(
                 "status": response.status.value,
                 "error": response.error,
             })
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             results.append({
                 "client_order_id": req.client_order_id,
                 "order_id": None,

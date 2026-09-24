@@ -1,8 +1,21 @@
-from unittest.mock import AsyncMock, patch
+import os
 
+os.environ.setdefault("API_SECRET_KEY", "test-secret-key-that-is-long-enough-32chars-for-test")
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import app.core.config as config_module
 from fastapi.testclient import TestClient
 
-from app.main import app
+config_module.get_settings.cache_clear()
+
+# Mock init_db to avoid real DB init
+with patch("app.db.init_db.init_db", new=AsyncMock()), patch(
+    "app.db.session.engine", MagicMock()
+):
+    from app.main import app
 
 client = TestClient(app)
 

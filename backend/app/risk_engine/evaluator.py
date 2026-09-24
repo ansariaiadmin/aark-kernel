@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple
+
 
 @dataclass(frozen=True)
 class RiskProfile:
@@ -9,7 +9,7 @@ class RiskProfile:
 
 class DeterministicRiskEngine:
     @staticmethod
-    def validate_order(profile: RiskProfile, current_balance_irt: float, requested_amount_irt: float) -> Tuple[bool, str]:
+    def validate_order(profile: RiskProfile, current_balance_irt: float, requested_amount_irt: float) -> tuple[bool, str]:
         if requested_amount_irt < 0:
             return False, "REJECTED: Amount cannot be negative."
         

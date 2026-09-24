@@ -1,10 +1,21 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, Text, Enum as SQLEnum, ForeignKey, Index, UniqueConstraint
+from enum import Enum as PyEnum
+
+from app.db.session import Base
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.db.session import Base
-from datetime import datetime
-from enum import Enum as PyEnum
-from typing import Optional
 
 
 class UserRole(str, PyEnum):

@@ -1,8 +1,8 @@
-from sqlalchemy.ext.asyncio import AsyncEngine
-from app.db.session import engine, Base
-from app.db.models import *  # noqa
 import asyncio
 import logging
+
+import app.db.models  # noqa: F401 - import side-effect to register models with Base.metadata
+from app.db.session import Base, engine
 
 logger = logging.getLogger(__name__)
 

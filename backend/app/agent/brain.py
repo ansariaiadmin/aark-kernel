@@ -1,19 +1,20 @@
 import json
 import logging
 import os
-from typing import Dict, Any, List, Optional, AsyncGenerator
-from pydantic import BaseModel, Field, ValidationError
+from collections.abc import AsyncGenerator
+from typing import Any
 
 from app.agent.llm import (
-    model_router,
-    llm_client,
-    ConversationMemory,
-    ModelProvider,
-    ModelConfig,
     ChatMessage,
+    ConversationMemory,
     MessageRole,
+    ModelConfig,
+    ModelProvider,
     ToolDefinition,
+    llm_client,
+    model_router,
 )
+from pydantic import BaseModel, Field, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ class AgentBrain:
             priority=20,
         ))
 
-    async def evaluate_market(self, wallet_balance_irt: float, market_context: str) -> Dict[str, Any]:
+    async def evaluate_market(self, wallet_balance_irt: float, market_context: str) -> dict[str, Any]:
         max_order_cap = wallet_balance_irt * 0.20
 
         system_prompt = f"""شما هسته تصمیم‌گیری هوشمند سیستم مالی AARK هستید.
@@ -132,7 +133,7 @@ class AgentBrain:
                 "action": "HOLD",
                 "confidence": 0.0,
                 "allocated_irt": 0.0,
-                "reason": f"خطا در پردازش هوش مصنوعی: {str(e)}",
+                "reason": f"خطا در پردازش هوش مصنوعی: {e!s}",
                 "reply_message": "در پردازش سناریو خطایی رخ داد. وضعیت جهت حفظ سرمایه روی HOLD تنظیم شد.",
             }
 
@@ -188,25 +189,25 @@ class AgentBrain:
                     self.memory.add_message(ChatMessage(role=MessageRole.USER, content=user_content))
                     self.memory.add_message(ChatMessage(role=MessageRole.ASSISTANT, content=full_response))
 
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Stream evaluation error: {e}")
             yield json.dumps({
                 "action": "HOLD",
                 "confidence": 0.0,
                 "allocated_irt": 0.0,
-                "reason": f"خطا در پردازش: {str(e)}",
+                "reason": f"خطا در پردازش: {e!s}",
                 "reply_message": "خطا در پردازش جریان.",
             })
 
     async def chat_with_tools(
         self,
         user_message: str,
-        tools: List[ToolDefinition],
-        system_prompt: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        tools: list[ToolDefinition],
+        system_prompt: str | None = None,
+    ) -> dict[str, Any]:
         """Chat with tool calling support."""
         default_system = "You are AARK Kernel, a financial trading assistant with access to tools."
         messages = [
@@ -231,5 +232,5 @@ class AgentBrain:
         if self.memory:
             self.memory.clear()
 
-    def get_memory_summary(self) -> Optional[str]:
+    def get_memory_summary(self) -> str | None:
         return self.memory.summary if self.memory else None

@@ -1,11 +1,10 @@
-from typing import Dict, List, Optional, Tuple, Any
-from decimal import Decimal
-from datetime import datetime, timedelta
-from dataclasses import dataclass
-from enum import Enum
-import numpy as np
 import logging
-from collections import defaultdict
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from enum import Enum
+from typing import Any
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -45,15 +44,15 @@ class StressTestResult:
     pnl_impact: float
     pnl_pct: float
     risk_level: RiskLevel
-    details: Dict[str, float]
+    details: dict[str, float]
 
 
 @dataclass
 class CorrelationRisk:
-    symbol_pairs: Dict[Tuple[str, str], float]
+    symbol_pairs: dict[tuple[str, str], float]
     max_correlation: float
     avg_correlation: float
-    high_correlation_pairs: List[Tuple[str, str, float]]
+    high_correlation_pairs: list[tuple[str, str, float]]
     concentration_risk: float
 
 
@@ -87,9 +86,9 @@ class AdvancedRiskEngine:
         self.lookback_days = lookback_days
 
         # Risk state
-        self.daily_pnl_history: List[float] = []
-        self.portfolio_value_history: List[float] = []
-        self.position_history: List[Dict[str, float]] = []
+        self.daily_pnl_history: list[float] = []
+        self.portfolio_value_history: list[float] = []
+        self.position_history: list[dict[str, float]] = []
 
     def calculate_var_historical(
         self,
@@ -101,7 +100,7 @@ class AdvancedRiskEngine:
         if len(returns) < 30:
             return VaRResult(
                 var_95=0, var_99=0, cvar_95=0, cvar_99=0,
-                confidence_level=confidence, method="historical", timestamp=datetime.utcnow()
+                confidence_level=confidence, method="historical", timestamp=datetime.now(timezone.utc)
             )
 
         var_95 = np.percentile(returns, (1 - 0.95) * 100) * portfolio_value
@@ -116,7 +115,7 @@ class AdvancedRiskEngine:
             cvar_99=abs(cvar_99),
             confidence_level=confidence,
             method="historical",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
     def calculate_var_parametric(
@@ -129,7 +128,7 @@ class AdvancedRiskEngine:
         if len(returns) < 30:
             return VaRResult(
                 var_95=0, var_99=0, cvar_95=0, cvar_99=0,
-                confidence_level=confidence, method="parametric", timestamp=datetime.utcnow()
+                confidence_level=confidence, method="parametric", timestamp=datetime.now(timezone.utc)
             )
 
         mean = np.mean(returns)
@@ -153,7 +152,7 @@ class AdvancedRiskEngine:
             cvar_99=cvar_99,
             confidence_level=confidence,
             method="parametric",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
     def calculate_var_monte_carlo(
@@ -167,7 +166,7 @@ class AdvancedRiskEngine:
         if len(returns) < 30:
             return VaRResult(
                 var_95=0, var_99=0, cvar_95=0, cvar_99=0,
-                confidence_level=confidence, method="monte_carlo", timestamp=datetime.utcnow()
+                confidence_level=confidence, method="monte_carlo", timestamp=datetime.now(timezone.utc)
             )
 
         mean = np.mean(returns)
@@ -186,15 +185,15 @@ class AdvancedRiskEngine:
             cvar_99=abs(cvar_99),
             confidence_level=confidence,
             method="monte_carlo",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
     def run_stress_tests(
         self,
-        positions: Dict[str, float],  # symbol -> quantity
-        prices: Dict[str, float],      # symbol -> current price
-        scenarios: Optional[Dict[str, Dict[str, float]]] = None,
-    ) -> List[StressTestResult]:
+        positions: dict[str, float],  # symbol -> quantity
+        prices: dict[str, float],      # symbol -> current price
+        scenarios: dict[str, dict[str, float]] | None = None,
+    ) -> list[StressTestResult]:
         """Run portfolio stress tests against defined scenarios."""
         if scenarios is None:
             scenarios = self._get_default_scenarios()
@@ -238,7 +237,7 @@ class AdvancedRiskEngine:
 
         return results
 
-    def _get_default_scenarios(self) -> Dict[str, Dict[str, float]]:
+    def _get_default_scenarios(self) -> dict[str, dict[str, float]]:
         """Define default stress test scenarios."""
         return {
             "market_crash": {"DEFAULT": -0.30, "BTCUSDT": -0.40, "ETHUSDT": -0.45},
@@ -251,7 +250,7 @@ class AdvancedRiskEngine:
 
     def analyze_correlation(
         self,
-        returns_data: Dict[str, np.ndarray],  # symbol -> returns array
+        returns_data: dict[str, np.ndarray],  # symbol -> returns array
         threshold: float = 0.7,
     ) -> CorrelationRisk:
         """Analyze correlation risk across positions."""
@@ -309,8 +308,8 @@ class AdvancedRiskEngine:
         signal_strength: float,  # 0 to 1
         volatility: float,       # Annualized volatility
         portfolio_value: float,
-        current_positions: Dict[str, float],
-        prices: Dict[str, float],
+        current_positions: dict[str, float],
+        prices: dict[str, float],
         max_risk_per_trade: float = 0.02,  # 2% risk per trade
     ) -> float:
         """Calculate position size based on volatility targeting and risk parity."""
@@ -338,12 +337,12 @@ class AdvancedRiskEngine:
 
     def validate_portfolio_risk(
         self,
-        positions: Dict[str, float],
-        prices: Dict[str, float],
+        positions: dict[str, float],
+        prices: dict[str, float],
         daily_pnl: float,
         portfolio_value: float,
-        returns_history: Optional[Dict[str, np.ndarray]] = None,
-    ) -> List[RiskMetric]:
+        returns_history: dict[str, np.ndarray] | None = None,
+    ) -> list[RiskMetric]:
         """Comprehensive portfolio risk validation."""
         metrics = []
 
@@ -427,7 +426,7 @@ class AdvancedRiskEngine:
 
         return metrics
 
-    def update_history(self, portfolio_value: float, daily_pnl: float, positions: Dict[str, float]) -> None:
+    def update_history(self, portfolio_value: float, daily_pnl: float, positions: dict[str, float]) -> None:
         """Update internal history for risk calculations."""
         self.portfolio_value_history.append(portfolio_value)
         self.daily_pnl_history.append(daily_pnl)
@@ -442,7 +441,7 @@ class AdvancedRiskEngine:
         if len(self.position_history) > max_len:
             self.position_history = self.position_history[-max_len:]
 
-    def get_risk_summary(self) -> Dict[str, Any]:
+    def get_risk_summary(self) -> dict[str, Any]:
         """Get current risk summary."""
         return {
             "max_portfolio_value": self.max_portfolio_value,
@@ -459,7 +458,7 @@ class AdvancedRiskEngine:
 # Backward compatibility with existing DeterministicRiskEngine
 class DeterministicRiskEngine:
     @staticmethod
-    def validate_order(profile, current_balance_irt: float, requested_amount_irt: float) -> Tuple[bool, str]:
+    def validate_order(profile, current_balance_irt: float, requested_amount_irt: float) -> tuple[bool, str]:
         if requested_amount_irt < 0:
             return False, "REJECTED: Amount cannot be negative."
 

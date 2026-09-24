@@ -1,28 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from datetime import datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from pydantic import BaseModel
-from typing import List, Optional
-from datetime import datetime, timedelta
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import (
-    authenticate_user,
-    create_access_token,
-    get_current_active_user,
-    get_current_user,
-    create_audit_log,
-    get_client_info,
-    require_role,
-    get_password_hash,
-    get_user_by_email,
-    get_user_by_id,
+    Token,
     User,
     UserCreate,
     UserResponse,
-    UserUpdate,
     UserRole,
-    Token,
+    UserUpdate,
+    authenticate_user,
+    create_access_token,
+    create_audit_log,
+    get_client_info,
+    get_current_active_user,
+    get_password_hash,
+    get_user_by_email,
+    get_user_by_id,
+    require_role,
 )
 from app.db.session import get_async_session
 
@@ -61,7 +59,7 @@ async def login(
         expires_delta=access_token_expires,
     )
 
-    user.last_login = datetime.utcnow()
+    user.last_login = datetime.now(timezone.utc)
     await db.commit()
 
     client_info = get_client_info(request)
@@ -150,13 +148,13 @@ async def update_current_user(
     return UserResponse.model_validate(current_user)
 
 
-@router.get("/auth/users", response_model=List[UserResponse])
+@router.get("/auth/users", response_model=list[UserResponse])
 async def list_users(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_role(UserRole.ADMIN)),
-) -> List[UserResponse]:
+) -> list[UserResponse]:
     result = await db.execute(select(User).offset(skip).limit(limit))
     users = result.scalars().all()
     return [UserResponse.model_validate(u) for u in users]

@@ -1,28 +1,24 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
-from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
-from decimal import Decimal
+from typing import Any
 
-from app.risk_engine.advanced import (
-    AdvancedRiskEngine,
-    RiskLevel,
-    VaRResult,
-    StressTestResult,
-    CorrelationRisk,
-    DeterministicRiskEngine,
-    RiskProfile,
-)
-from app.services.trading import PortfolioManager
-from app.api.v1.trading import get_portfolio_manager
+import numpy as np
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
+
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.risk_engine.advanced import (
+    AdvancedRiskEngine,
+    DeterministicRiskEngine,
+    RiskLevel,
+    RiskProfile,
+)
 
 router = APIRouter(tags=["Advanced Risk Management"])
 settings = get_settings()
 logger = get_logger(__name__)
 
 # Global risk engine instance
-_risk_engine: Optional[AdvancedRiskEngine] = None
+_risk_engine: AdvancedRiskEngine | None = None
 
 
 def get_risk_engine() -> AdvancedRiskEngine:
@@ -53,19 +49,19 @@ class StressTestResponse(BaseModel):
     pnl_impact: float
     pnl_pct: float
     risk_level: str
-    details: Dict[str, float]
+    details: dict[str, float]
 
 
 class CorrelationResponse(BaseModel):
-    symbol_pairs: Dict[str, float]
+    symbol_pairs: dict[str, float]
     max_correlation: float
     avg_correlation: float
-    high_correlation_pairs: List[Dict[str, Any]]
+    high_correlation_pairs: list[dict[str, Any]]
     concentration_risk: float
 
 
 class RiskMetricsResponse(BaseModel):
-    metrics: List[Dict[str, Any]]
+    metrics: list[dict[str, Any]]
     overall_level: str
     timestamp: str
 
@@ -75,8 +71,8 @@ class PositionSizeRequest(BaseModel):
     signal_strength: float = Field(..., ge=0, le=1)
     volatility: float = Field(..., gt=0)
     portfolio_value: float = Field(..., gt=0)
-    current_positions: Dict[str, float] = Field(default_factory=dict)
-    prices: Dict[str, float] = Field(default_factory=dict)
+    current_positions: dict[str, float] = Field(default_factory=dict)
+    prices: dict[str, float] = Field(default_factory=dict)
     max_risk_per_trade: float = Field(0.02, gt=0, le=0.1)
 
 
@@ -118,13 +114,13 @@ async def get_var(
     )
 
 
-@router.post("/stress-test", response_model=List[StressTestResponse])
+@router.post("/stress-test", response_model=list[StressTestResponse])
 async def run_stress_test(
-    positions: Dict[str, float],
-    prices: Dict[str, float],
-    scenarios: Optional[Dict[str, Dict[str, float]]] = None,
+    positions: dict[str, float],
+    prices: dict[str, float],
+    scenarios: dict[str, dict[str, float]] | None = None,
     engine: AdvancedRiskEngine = Depends(get_risk_engine),
-) -> List[StressTestResponse]:
+) -> list[StressTestResponse]:
     """Run portfolio stress tests against defined scenarios."""
     results = engine.run_stress_tests(positions, prices, scenarios)
     return [
@@ -143,7 +139,7 @@ async def run_stress_test(
 
 @router.get("/correlation", response_model=CorrelationResponse)
 async def get_correlation_risk(
-    symbols: List[str] = Query(..., min_length=2),
+    symbols: list[str] = Query(..., min_length=2),
     lookback_days: int = Query(252, ge=30, le=756),
     engine: AdvancedRiskEngine = Depends(get_risk_engine),
 ) -> CorrelationResponse:
@@ -168,11 +164,11 @@ async def get_correlation_risk(
 
 @router.post("/validate", response_model=RiskMetricsResponse)
 async def validate_portfolio_risk(
-    positions: Dict[str, float],
-    prices: Dict[str, float],
+    positions: dict[str, float],
+    prices: dict[str, float],
     daily_pnl: float,
     portfolio_value: float,
-    returns_history: Optional[Dict[str, List[float]]] = None,
+    returns_history: dict[str, list[float]] | None = None,
     engine: AdvancedRiskEngine = Depends(get_risk_engine),
 ) -> RiskMetricsResponse:
     """Comprehensive portfolio risk validation."""
@@ -213,7 +209,7 @@ async def validate_portfolio_risk(
             for m in metrics
         ],
         overall_level=overall.value,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
     )
 
 
@@ -250,7 +246,7 @@ async def calculate_position_size(
 @router.get("/summary")
 async def get_risk_summary(
     engine: AdvancedRiskEngine = Depends(get_risk_engine),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get current risk engine configuration and state."""
     return engine.get_risk_summary()
 
@@ -259,7 +255,7 @@ async def get_risk_summary(
 async def legacy_validate_order(
     current_balance_irt: float,
     requested_amount_irt: float,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Backward compatible risk validation endpoint."""
     profile = RiskProfile(
         max_portfolio_allocation_irt=settings.MAX_PORTFOLIO_ALLOCATION_IRT,
@@ -270,4 +266,4 @@ async def legacy_validate_order(
     return {"approved": approved, "message": message}
 
 
-from datetime import datetime
+from datetime import datetime, timezone

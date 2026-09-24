@@ -1,7 +1,7 @@
 from functools import lru_cache
-from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from pydantic import Field
-from typing import Optional
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"
-    LOG_FILE: Optional[str] = None
+    LOG_FILE: str | None = None
 
     # Monitoring
     ENABLE_METRICS: bool = True

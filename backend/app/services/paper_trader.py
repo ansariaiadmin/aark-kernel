@@ -3,15 +3,13 @@ Nobitex Paper Trader - Real-time paper trading with slippage simulation
 Uses Nobitex public API (no key required) with fallback to mock prices for offline testing
 """
 
-import asyncio
+import logging
 import random
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
-from decimal import Decimal
+from datetime import datetime, timezone
 from enum import Enum
-from typing import Dict, List, Optional, Any
-import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -48,14 +46,14 @@ class PaperOrder:
     side: OrderSide
     order_type: OrderType
     quantity: float
-    price: Optional[float] = None
-    stop_price: Optional[float] = None
+    price: float | None = None
+    stop_price: float | None = None
     status: OrderStatus = OrderStatus.PENDING
-    filled_price: Optional[float] = None
+    filled_price: float | None = None
     filled_quantity: float = 0.0
     slippage: float = 0.0
     commission: float = 0.0
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     pnl: float = 0.0
 
 
@@ -106,14 +104,14 @@ class NobitexPaperTrader:
     def __init__(self, initial_balance: float = 100000.0, base_currency: str = "USDT"):
         self.base_currency = base_currency
         self.initial_balance = initial_balance
-        self.balances: Dict[str, PaperBalance] = {
+        self.balances: dict[str, PaperBalance] = {
             base_currency: PaperBalance(asset=base_currency, free=initial_balance)
         }
-        self.positions: Dict[str, PaperPosition] = {}
-        self.orders: Dict[str, PaperOrder] = {}
-        self.trade_history: List[PaperOrder] = []
-        self.price_cache: Dict[str, float] = self.MOCK_PRICES.copy()
-        self.price_cache_time: Dict[str, float] = {}
+        self.positions: dict[str, PaperPosition] = {}
+        self.orders: dict[str, PaperOrder] = {}
+        self.trade_history: list[PaperOrder] = []
+        self.price_cache: dict[str, float] = self.MOCK_PRICES.copy()
+        self.price_cache_time: dict[str, float] = {}
         self.commission_rate = 0.001  # 0.1% commission
         self.slippage_range = (0.001, 0.003)  # 0.1% to 0.3%
 
@@ -151,7 +149,7 @@ class NobitexPaperTrader:
                                         self.price_cache[symbol] = price
                                         self.price_cache_time[symbol] = now
                                         return price
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.debug(f"Failed to fetch real price for {symbol}: {e}, using mock")
 
         # Fallback to mock price with small random walk to simulate real-time
@@ -239,7 +237,7 @@ class NobitexPaperTrader:
         logger.info(f"Stop order placed: {side} {quantity} {symbol} stop @ {stop_price:.2f}")
         return order
 
-    async def check_pending_orders(self) -> List[PaperOrder]:
+    async def check_pending_orders(self) -> list[PaperOrder]:
         """Check and fill pending limit/stop orders based on current market price"""
         filled = []
         for order_id, order in list(self.orders.items()):
@@ -250,14 +248,10 @@ class NobitexPaperTrader:
 
             should_fill = False
             if order.order_type == OrderType.LIMIT:
-                if order.side == OrderSide.BUY and current_price <= order.price:
-                    should_fill = True
-                elif order.side == OrderSide.SELL and current_price >= order.price:
+                if order.side == OrderSide.BUY and current_price <= order.price or order.side == OrderSide.SELL and current_price >= order.price:
                     should_fill = True
             elif order.order_type == OrderType.STOP:
-                if order.side == OrderSide.BUY and current_price >= order.stop_price:
-                    should_fill = True
-                elif order.side == OrderSide.SELL and current_price <= order.stop_price:
+                if order.side == OrderSide.BUY and current_price >= order.stop_price or order.side == OrderSide.SELL and current_price <= order.stop_price:
                     should_fill = True
 
             if should_fill:
@@ -380,7 +374,7 @@ class NobitexPaperTrader:
 
         return total
 
-    def get_total_pnl(self) -> Dict[str, float]:
+    def get_total_pnl(self) -> dict[str, float]:
         """Get total PnL breakdown"""
         realized = sum(p.realized_pnl for p in self.positions.values())
         unrealized = sum(p.unrealized_pnl for p in self.positions.values())
@@ -390,7 +384,7 @@ class NobitexPaperTrader:
             "total": realized + unrealized,
         }
 
-    async def rebalance_portfolio(self, target_allocations: Dict[str, float]) -> List[PaperOrder]:
+    async def rebalance_portfolio(self, target_allocations: dict[str, float]) -> list[PaperOrder]:
         """
         Rebalance portfolio to target allocations
         Example: {"BTCUSDT": 0.6, "ETHUSDT": 0.3, "USDTIRT": 0.1}
@@ -424,7 +418,7 @@ class NobitexPaperTrader:
 
         return orders
 
-    def get_positions_summary(self) -> Dict[str, Any]:
+    def get_positions_summary(self) -> dict[str, Any]:
         """Get summary of all positions"""
         return {
             symbol: {

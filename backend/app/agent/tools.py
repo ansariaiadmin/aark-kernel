@@ -1,5 +1,5 @@
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field
+from typing import Any
+
 from app.agent.llm import ToolDefinition
 
 
@@ -59,7 +59,7 @@ class PortfolioTool:
     """Tools for portfolio and position management."""
 
     @staticmethod
-    def get_balance(asset: Optional[str] = None) -> ToolDefinition:
+    def get_balance(asset: str | None = None) -> ToolDefinition:
         return ToolDefinition(
             name="get_balance",
             description="Get account balance for specific asset or all assets",
@@ -103,8 +103,8 @@ class OrderTool:
         side: str,
         order_type: str,
         quantity: float,
-        price: Optional[float] = None,
-        stop_price: Optional[float] = None,
+        price: float | None = None,
+        stop_price: float | None = None,
     ) -> ToolDefinition:
         return ToolDefinition(
             name="place_order",
@@ -138,7 +138,7 @@ class OrderTool:
         )
 
     @staticmethod
-    def get_open_orders(symbol: Optional[str] = None) -> ToolDefinition:
+    def get_open_orders(symbol: str | None = None) -> ToolDefinition:
         return ToolDefinition(
             name="get_open_orders",
             description="Get all open orders",
@@ -189,7 +189,7 @@ class NewsTool:
     """Tools for news and sentiment."""
 
     @staticmethod
-    def get_market_news(symbol: Optional[str] = None, limit: int = 10) -> ToolDefinition:
+    def get_market_news(symbol: str | None = None, limit: int = 10) -> ToolDefinition:
         return ToolDefinition(
             name="get_market_news",
             description="Get latest market news",
@@ -217,7 +217,7 @@ class NewsTool:
         )
 
 
-def get_all_tools() -> List[ToolDefinition]:
+def get_all_tools() -> list[ToolDefinition]:
     """Get all available tools for the agent."""
     return [
         MarketDataTool.get_ticker("BTCUSDT"),
@@ -244,7 +244,7 @@ class ToolExecutor:
         self.nobitex_client = nobitex_client
         self.db_session = db_session
 
-    async def execute(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         try:
             if tool_name == "get_ticker":
                 return await self._get_ticker(arguments)
@@ -274,45 +274,45 @@ class ToolExecutor:
                 return await self._get_sentiment(arguments)
             else:
                 return {"error": f"Unknown tool: {tool_name}"}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             return {"error": str(e)}
 
-    async def _get_ticker(self, args: Dict) -> Dict:
+    async def _get_ticker(self, args: dict) -> dict:
         # Placeholder - integrate with actual exchange client
         return {"symbol": args["symbol"], "price": 0, "change_24h": 0, "volume_24h": 0}
 
-    async def _get_orderbook(self, args: Dict) -> Dict:
+    async def _get_orderbook(self, args: dict) -> dict:
         return {"bids": [], "asks": []}
 
-    async def _get_klines(self, args: Dict) -> Dict:
+    async def _get_klines(self, args: dict) -> dict:
         return {"data": []}
 
-    async def _get_balance(self, args: Dict) -> Dict:
+    async def _get_balance(self, args: dict) -> dict:
         return {"balances": {}}
 
-    async def _get_positions(self, args: Dict) -> Dict:
+    async def _get_positions(self, args: dict) -> dict:
         return {"positions": []}
 
-    async def _get_pnl(self, args: Dict) -> Dict:
+    async def _get_pnl(self, args: dict) -> dict:
         return {"pnl": 0, "pnl_pct": 0}
 
-    async def _place_order(self, args: Dict) -> Dict:
+    async def _place_order(self, args: dict) -> dict:
         return {"order_id": "new_order_id", "status": "submitted"}
 
-    async def _cancel_order(self, args: Dict) -> Dict:
+    async def _cancel_order(self, args: dict) -> dict:
         return {"success": True}
 
-    async def _get_open_orders(self, args: Dict) -> Dict:
+    async def _get_open_orders(self, args: dict) -> dict:
         return {"orders": []}
 
-    async def _check_risk_limits(self, args: Dict) -> Dict:
+    async def _check_risk_limits(self, args: dict) -> dict:
         return {"approved": True, "message": "Order within risk limits"}
 
-    async def _get_risk_metrics(self, args: Dict) -> Dict:
+    async def _get_risk_metrics(self, args: dict) -> dict:
         return {"var_95": 0, "max_drawdown": 0, "sharpe": 0}
 
-    async def _get_market_news(self, args: Dict) -> Dict:
+    async def _get_market_news(self, args: dict) -> dict:
         return {"articles": []}
 
-    async def _get_sentiment(self, args: Dict) -> Dict:
+    async def _get_sentiment(self, args: dict) -> dict:
         return {"sentiment": "neutral", "score": 0.5}
