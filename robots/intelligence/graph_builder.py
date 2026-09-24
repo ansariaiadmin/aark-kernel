@@ -1,7 +1,6 @@
 import ast
-import os
 from pathlib import Path
-from typing import Dict, List, Set, Any
+from typing import Dict, List, Set
 
 class RepoIntelligence:
     def __init__(self, root_dir: str):
