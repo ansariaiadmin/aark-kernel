@@ -9,7 +9,7 @@ NC='\033[0m'
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}  AARK Kernel — Trading Platform${NC}"
-echo -e "${BLUE}  نصب خودکار - Auto Installer v1.0.3${NC}"
+echo -e "${BLUE}  نصب خودکار - Auto Installer v1.0.4${NC}"
 echo -e "${BLUE}  پلتفرم ترید حرفه‌ای با AI${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
