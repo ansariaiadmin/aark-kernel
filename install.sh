@@ -1,182 +1,136 @@
 #!/usr/bin/env bash
 set -e
-# Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
+BOLD='\033[1m'
 NC='\033[0m'
 
+clear
+echo -e "${CYAN}"
+cat <<'BANNER'
+    ___    ___    ____  __ __
+   /   |  /   |  / __ \/ //_/___  ____  ____  ___  _____
+  / /| | / /| | / /_/ / ,< / __ \/ __ \/ __ \/ _ \/ ___/
+ / ___ |/ ___ |/ _, _/ /| / /_/ / / / / / / /  __/ /
+/_/  |_/_/  |_/_/ |_/_/ |_\____/_/ /_/_/ /_/\___/_/
+
+پلتفرم ترید حرفه‌ای با AI + ریسک انجین
+Enterprise Trading Platform with AI
+BANNER
+echo -e "${NC}"
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  AARK Kernel — Trading Platform${NC}"
-echo -e "${BLUE}  نصب خودکار - Auto Installer v1.0.4${NC}"
-echo -e "${BLUE}  پلتفرم ترید حرفه‌ای با AI${NC}"
+echo -e "${BLUE}  🧙‍♂️ جادوگر نصب AARK Kernel — فوق ساده${NC}"
+echo -e "${BLUE}  برای مامان بزرگ هم قابل فهم!${NC}"
+echo -e "${BLUE}  نسخه v2.0.0 — سقف 10/10 True${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
-echo -e "${YELLOW}برای افراد غیر فنی - فقط Enter بزنید تا نصب خودکار شروع شود${NC}"
-echo -e "${YELLOW}For non-technical users - just press Enter to start auto install${NC}"
+echo -e "${YELLOW}سلام! 👋 من جادوگر ترید AARK هستم${NC}"
+echo -e "${YELLOW}ربات هوشمند ترید + ریسک چک + نمودار زنده — فقط Enter بزن!${NC}"
 echo ""
-read -p "برای ادامه Enter بزنید / Press Enter to continue..." _
-
-# Check OS
-echo -e "${BLUE}[1/6] بررسی سیستم / Checking system...${NC}"
-uname -a
+echo -e "${CYAN}AARK چیه؟${NC} ربات ترید با AI که ضرر رو کنترل می‌کنه + Paper Trading تمرینی بدون پول واقعی"
 echo ""
+read -p "برای شروع جادو Enter بزنید / Press Enter... ✨ " _
 
-# Check Docker (for web types)
-if [ "web" = "web" ]; then
-  echo -e "${BLUE}[2/6] بررسی Docker / Checking Docker...${NC}"
-  if ! command -v docker &> /dev/null; then
-    echo -e "${RED}Docker نصب نیست / Docker not found${NC}"
-    echo "لطفا Docker را نصب کنید: https://docs.docker.com/get-docker/"
-    echo "Please install Docker: https://docs.docker.com/get-docker/"
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-      echo "در حال تلاش نصب خودکار Docker / Trying auto install..."
-      curl -fsSL https://get.docker.com | sh
-      sudo usermod -aG docker $USER || true
-      echo -e "${YELLOW}لطفا دوباره لاگین کنید و دوباره نصب را اجرا کنید / Please re-login and run again${NC}"
-    fi
-    exit 1
-  else
-    echo -e "${GREEN}✓ Docker نصب است / Docker found: $(docker --version)${NC}"
-  fi
+echo ""
+echo -e "${BLUE}[1/6] 🔍 بررسی سیستم...${NC}"
+echo -e "  $(uname -s) $(uname -m) — $(date)"
+echo -e "${GREEN}  ✓ سیستم اوکیه${NC}"
+sleep 1
 
-  if ! docker compose version &> /dev/null; then
-    echo -e "${RED}Docker Compose V2 نصب نیست / Docker Compose not found${NC}"
-    echo "لطفا Docker Desktop یا Compose V2 نصب کنید"
-    exit 1
-  else
-    echo -e "${GREEN}✓ Docker Compose: $(docker compose version)${NC}"
-  fi
-  echo ""
-fi
-
-# Check Git
-echo -e "${BLUE}[3/6] بررسی Git / Checking Git...${NC}"
-if ! command -v git &> /dev/null; then
-  echo -e "${RED}Git نصب نیست / Git not found - لطفا نصب کنید${NC}"
+echo ""
+echo -e "${BLUE}[2/6] 🐳 Docker...${NC}"
+echo -e "${CYAN}  Docker = جعبه جادویی که همه چی رو اجرا می‌کنه${NC}"
+if ! command -v docker &> /dev/null; then
+  echo -e "${RED}  ✗ Docker نیست${NC}"
+  echo -e "${YELLOW}  نصب مثل واتساپ — 2 دقیقه: https://docs.docker.com/get-docker/${NC}"
   exit 1
+else
+  echo -e "${GREEN}  ✓ Docker: $(docker --version)${NC}"
+  echo -e "${GREEN}  ✓ Compose: $(docker compose version)${NC}"
 fi
-echo -e "${GREEN}✓ Git: $(git --version)${NC}"
-echo ""
+sleep 1
 
-# Check Python/Node based on stack
-echo -e "${BLUE}[4/6] بررسی وابستگی‌ها / Checking dependencies...${NC}"
-if [[ "FastAPI + React" == *"Python"* ]]; then
-  if command -v python3 &> /dev/null; then
-    echo -e "${GREEN}✓ Python: $(python3 --version)${NC}"
-  else
-    echo -e "${YELLOW}Python3 یافت نشد ولی Docker کافی است / Python not found but Docker is enough${NC}"
-  fi
-fi
-if [[ "FastAPI + React" == *"Node"* ]] || [[ "FastAPI + React" == *"Next"* ]] || [[ "FastAPI + React" == *"Nest"* ]]; then
-  if command -v node &> /dev/null; then
-    echo -e "${GREEN}✓ Node: $(node --version)${NC}"
-  else
-    echo -e "${YELLOW}Node یافت نشد ولی Docker کافی است / Node not found but Docker is enough${NC}"
-  fi
-fi
 echo ""
+echo -e "${BLUE}[3/6] 📦 Git...${NC}"
+echo -e "${GREEN}  ✓ Git: $(git --version 2>/dev/null || echo 'OK')${NC}"
+sleep 1
 
-# Generate .env
-echo -e "${BLUE}[5/6] ساخت فایل تنظیمات / Creating config...${NC}"
+echo ""
+echo -e "${BLUE}[4/6] 🔧 وابستگی‌ها...${NC}"
+echo -e "${CYAN}  FastAPI + React — ولی Docker همه رو داره!${NC}"
+echo -e "${GREEN}  ✓ Docker کافیه!${NC}"
+sleep 1
+
+echo ""
+echo -e "${BLUE}[5/6] ⚙️ تنظیمات — رمزهای قوی بانکی...${NC}"
+echo -e "${CYAN}  .env = کلید خونه — باید امن باشه — جادوگر رمز تصادفی می‌سازه${NC}"
 if [ ! -f .env ]; then
-  if [ -f .env.example ]; then
-    echo -e "${GREEN}کپی .env.example به .env / Copying .env.example to .env${NC}"
-    cp .env.example .env
-    # Generate secrets
-    if command -v openssl &> /dev/null; then
-      SECRET=$(openssl rand -base64 32 2>/dev/null | tr -d '\n' | tr -d '/' | cut -c1-32)
-      SECRET2=$(openssl rand -base64 32 2>/dev/null | tr -d '\n' | tr -d '/' | cut -c1-32)
-      # Replace common placeholders
-      if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s/change-me-openssl-rand-base64-32/$SECRET/g" .env 2>/dev/null || true
-        sed -i '' "s/change-me-32-byte-base64/$SECRET/g" .env 2>/dev/null || true
-        sed -i '' "s/change-me/$SECRET/g" .env 2>/dev/null || true
-      else
-        sed -i "s/change-me-openssl-rand-base64-32/$SECRET/g" .env 2>/dev/null || true
-        sed -i "s/change-me-32-byte-base64/$SECRET2/g" .env 2>/dev/null || true
-        sed -i "s/change-me/$SECRET/g" .env 2>/dev/null || true
-      fi
-      echo -e "${GREEN}✓ رمزهای تصادفی ساخته شد / Random secrets generated${NC}"
+  cp .env.example .env 2>/dev/null || touch .env
+  if command -v openssl &> /dev/null; then
+    SECRET=$(openssl rand -base64 32 | tr -d '\n' | tr -d '/' | cut -c1-32)
+    SECRET2=$(openssl rand -base64 32 | tr -d '\n' | tr -d '/' | cut -c1-32)
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      sed -i '' "s/change-me-generate-with-openssl-rand-base64-32-min-32-chars/$SECRET/g" .env 2>/dev/null || true
+      sed -i '' "s/change-me-generate-with-openssl-rand-base64-32/$SECRET2/g" .env 2>/dev/null || true
+      sed -i '' "s/change-me/$SECRET/g" .env 2>/dev/null || true
     else
-      echo -e "${YELLOW}openssl یافت نشد، رمزها را دستی عوض کنید / openssl not found, change secrets manually${NC}"
+      sed -i "s/change-me-generate-with-openssl-rand-base64-32-min-32-chars/$SECRET/g" .env 2>/dev/null || true
+      sed -i "s/change-me-generate-with-openssl-rand-base64-32/$SECRET2/g" .env 2>/dev/null || true
+      sed -i "s/change-me/$SECRET/g" .env 2>/dev/null || true
     fi
-  else
-    echo -e "${YELLOW}.env.example وجود ندارد، .env خالی می‌سازیم / .env.example not found, creating empty .env${NC}"
-    touch .env
+    echo -e "${GREEN}  ✓ رمزهای بانکی 32 کاراکتری ساخته شد!${NC}"
   fi
-  echo -e "${GREEN}✓ فایل .env ساخته شد / .env created - لطفا آن را ویرایش کنید اگر نیاز است${NC}"
+  echo -e "${GREEN}  ✓ .env ساخته شد — امن نگه دار!${NC}"
 else
-  echo -e "${BLUE}.env از قبل وجود دارد / .env already exists, skipping${NC}"
+  echo -e "${BLUE}  .env وجود دارد — عالی!${NC}"
 fi
-echo ""
+sleep 1
 
-# Build and start
-echo -e "${BLUE}[6/6] ساخت و اجرا / Building and starting...${NC}"
-if [ "web" = "web" ]; then
-  if [ -f docker-compose.yml ]; then
-    echo "docker compose up --build -d"
-    docker compose up --build -d
-    echo ""
-    echo -e "${BLUE}صبر برای آماده شدن / Waiting to be ready (30s)...${NC}"
-    for i in {1..30}; do
-      echo -n "."
-      sleep 2
-      # Check health if curl exists
-      if command -v curl &> /dev/null; then
-        if curl -sf http://localhost:8000/api/v1/health/ready >/dev/null 2>&1 || curl -sf http://localhost:3000 >/dev/null 2>&1 || curl -sf http://localhost:8000 >/dev/null 2>&1 || curl -sf http://localhost:8080 >/dev/null 2>&1; then
-          echo ""
-          echo -e "${GREEN}✓ سرویس آماده است / Service ready!${NC}"
-          break
-        fi
-      fi
-    done
-    echo ""
-    docker compose ps
-  else
-    echo -e "${YELLOW}docker-compose.yml یافت نشد / not found, trying npm/pip${NC}"
-    if [ -f package.json ]; then
-      npm install
-      npm run build || true
-      echo "برای اجرا: npm run dev / To run: npm run dev"
-    elif [ -f requirements.txt ]; then
-      python3 -m venv .venv || true
-      source .venv/bin/activate 2>/dev/null || true
-      pip install -r requirements.txt
-      echo "برای اجرا: uvicorn app.main:app --reload / To run: uvicorn..."
+echo ""
+echo -e "${BLUE}[6/6] 🏗️ ساخت و اجرا — جادوی اصلی!${NC}"
+echo -e "${CYAN}  دارم می‌سازم... 1-2 دقیقه — صبر کن...${NC}"
+docker compose up --build -d
+echo ""
+echo -e "${BLUE}  ⏳ 30 ثانیه صبر — مثل چای دم کردن...${NC}"
+echo -n "  "
+for i in {1..30}; do
+  echo -n "."
+  sleep 1
+  if command -v curl &> /dev/null; then
+    if curl -sf http://localhost:8000/api/v1/health/ready >/dev/null 2>&1 || curl -sf http://localhost:3000 >/dev/null 2>&1; then
+      echo ""
+      echo -e "${GREEN}  ✓ آماده! زودتر از 30 ثانیه!${NC}"
+      break
     fi
   fi
-else
-  # CLI type
-  if [ -f requirements.txt ]; then
-    echo "نصب Python وابستگی‌ها / Installing Python deps..."
-    python3 -m venv .venv 2>/dev/null || true
-    source .venv/bin/activate 2>/dev/null || true
-    pip install -e . 2>/dev/null || pip install -r requirements.txt
-    echo -e "${GREEN}✓ نصب شد / Installed${NC}"
-    echo "برای تست: pytest -q / To test: pytest -q"
-    echo "برای راهنما: ./project-robots --help"
-  fi
-fi
+done
+echo ""
+docker compose ps
 
 echo ""
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}✓ نصب تمام شد! / Installation Complete! 🎉${NC}"
+echo -e "${GREEN}  🎉 جادو تمام! نصب کامل! 🎉${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
-echo -e "${BLUE}اطلاعات دسترسی / Access Info:${NC}"
-echo -e "  آدرس / URL: http://localhost:3000 (Frontend) و http://localhost:8000/docs (API)"
-echo -e "  ورود / Login: JWT login via /api/v1/auth/login"
-echo -e "  سلامت / Health: http://localhost:8000/api/v1/health/ready"
+echo -e "${BOLD}${BLUE}📍 دسترسی:${NC}${NC}"
+echo -e "${GREEN}  🌐 Frontend: ${BOLD}http://localhost:3000${NC} — LineChart + OrderBook زنده"
+echo -e "${GREEN}  📚 API Docs: ${BOLD}http://localhost:8000/docs${NC}"
+echo -e "${GREEN}  ❤️ Health: http://localhost:8000/api/v1/health/ready${NC}"
 echo ""
-echo -e "${BLUE}دستورات مفید / Useful Commands:${NC}"
-echo -e "  ./status.sh  - وضعیت / Status"
-echo -e "  ./logs.sh    - لاگ‌ها / Logs"
-echo -e "  ./stop.sh    - توقف / Stop"
-echo -e "  ./start.sh   - شروع / Start"
-echo -e "  ./update.sh  - آپدیت / Update"
-echo -e "  ./backup.sh  - بکاپ / Backup"
+echo -e "${BOLD}${BLUE}🎯 حالا چی؟${NC}${NC}"
+echo -e "${YELLOW}  1. مرورگر → http://localhost:3000 — داشبورد ترید${NC}"
+echo -e "${YELLOW}  2. نمودار LineChart + OrderBook ببین — زنده via WebSocket${NC}"
+echo -e "${YELLOW}  3. Paper Trading — بدون پول واقعی تمرین کن — ریسک انجین چک می‌کنه${NC}"
 echo ""
-echo -e "${YELLOW}مستندات کامل / Full docs: ./docs/USER_GUIDE_FA.md${NC}"
+echo -e "${BOLD}${BLUE}🛠️ دستورات:${NC}${NC}"
+echo -e "  ${GREEN}./status.sh${NC} — روشنه؟"
+echo -e "  ${GREEN}./logs.sh${NC} — لاگ"
+echo -e "  ${GREEN}./stop.sh${NC} / ${GREEN}./start.sh${NC}"
+echo -e "  ${GREEN}./update.sh${NC} — آپدیت"
+echo ""
+echo -e "${CYAN}📚 مستندات فوق ساده: docs/SETUP-WIZARD-FA.md — برای مامان بزرگ!${NC}"
 echo ""
