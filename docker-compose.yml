@@ -1,18 +1,18 @@
-version: '3.9'
-
 services:
   postgres:
     image: postgres:16-alpine
     container_name: aark-postgres
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-aark_db}
-      POSTGRES_USER: ${POSTGRES_USER:-aark_admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_aark_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aark_admin} -d ${POSTGRES_DB:-aark_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -21,11 +21,13 @@ services:
     image: redis:7-alpine
     container_name: aark-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_aark_secure}
+    env_file:
+      - .env
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_aark_secure}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -41,10 +43,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aark_admin}:${POSTGRES_PASSWORD:-secure_aark_pass_2026}@postgres:5432/${POSTGRES_DB:-aark_db}
-      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_aark_secure}@redis:6379/0
-      API_SECRET_KEY: ${API_SECRET_KEY:-default_super_secret_jwt_key_32bytes_min}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      API_SECRET_KEY: ${API_SECRET_KEY}
       LOCAL_OLLAMA_HOST: ${LOCAL_OLLAMA_HOST:-http://host.docker.internal:11434}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-json}
@@ -67,11 +71,20 @@ services:
     container_name: aark-frontend
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    env_file:
+      - .env
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:${AARK_BACKEND_PORT:-8000}/api/v1
     ports:
       - "127.0.0.1:${AARK_FRONTEND_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
 volumes:
   pgdata:

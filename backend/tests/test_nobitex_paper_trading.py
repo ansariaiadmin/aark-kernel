@@ -5,10 +5,10 @@ Covers: Market/Limit/Stop orders, PnL tracking, Portfolio rebalancing
 Acceptance: ≥10 tests, 3 real trades, PnL accuracy ±0.01%, 2 stress scenarios
 """
 
-import asyncio
-import pytest
 import random
-from app.services.paper_trader import NobitexPaperTrader, OrderSide, OrderType, OrderStatus
+
+import pytest
+from app.services.paper_trader import NobitexPaperTrader, OrderSide, OrderStatus
 
 
 @pytest.fixture
@@ -160,7 +160,7 @@ class TestStopOrders:
 
         # Place stop loss at -5%
         stop_price = 60000.0 * 0.95  # $57K
-        order = await paper_trader.place_stop_order("BTCUSDT", OrderSide.SELL, 1.0, stop_price)
+        await paper_trader.place_stop_order("BTCUSDT", OrderSide.SELL, 1.0, stop_price)
 
         # Price above stop, should not trigger
         async def mock_above(symbol):
@@ -185,8 +185,7 @@ class TestPnLCalculation:
         """Test PnL calculation after 3 trades with ±0.01% tolerance"""
         # Trade 1: Buy 1 BTC @ $60K
         paper_trader.price_cache["BTCUSDT"] = 60000.0
-        order1 = await paper_trader.place_market_order("BTCUSDT", OrderSide.BUY, 1.0)
-        buy_price = order1.filled_price
+        await paper_trader.place_market_order("BTCUSDT", OrderSide.BUY, 1.0)
 
         # Trade 2: Price goes to $65K, sell 0.5 BTC
         paper_trader.price_cache["BTCUSDT"] = 65000.0
@@ -197,7 +196,7 @@ class TestPnLCalculation:
         paper_trader.get_market_price = mock_65k
         await paper_trader.update_positions_pnl()
 
-        order2 = await paper_trader.place_market_order("BTCUSDT", OrderSide.SELL, 0.5)
+        await paper_trader.place_market_order("BTCUSDT", OrderSide.SELL, 0.5)
 
         # Trade 3: Price goes to $70K, sell remaining 0.5 BTC
         async def mock_70k(symbol):
@@ -205,7 +204,7 @@ class TestPnLCalculation:
 
         paper_trader.get_market_price = mock_70k
         await paper_trader.update_positions_pnl()
-        order3 = await paper_trader.place_market_order("BTCUSDT", OrderSide.SELL, 0.5)
+        await paper_trader.place_market_order("BTCUSDT", OrderSide.SELL, 0.5)
 
         # Calculate expected PnL
         # Buy 1 @ ~60K, Sell 0.5 @ ~65K, Sell 0.5 @ ~70K
@@ -271,7 +270,7 @@ class TestPortfolioRebalancing:
         # Check allocations after rebalancing (approximate due to slippage)
         # Portfolio value $100K, target BTC $60K = 1 BTC, ETH $30K = 10 ETH
         btc_pos = paper_trader.positions.get("BTCUSDT")
-        eth_pos = paper_trader.positions.get("ETHUSDT")
+        paper_trader.positions.get("ETHUSDT")
 
         if btc_pos:
             btc_value = btc_pos.quantity * 60000.0
@@ -324,7 +323,6 @@ class TestRealTradesWithWebSocket:
         paper_trader.get_market_price = price_btc_60k
         order1 = await paper_trader.place_market_order("BTCUSDT", OrderSide.BUY, 0.1)
         trades.append(order1)
-        print(f"Trade 1: BUY 0.1 BTC @ {order1.filled_price:.2f}, slippage {order1.slippage*100:.3f}%")
 
         # Trade 2: Buy 1 ETH
         async def price_eth_3k(symbol):
@@ -333,7 +331,6 @@ class TestRealTradesWithWebSocket:
         paper_trader.get_market_price = price_eth_3k
         order2 = await paper_trader.place_market_order("ETHUSDT", OrderSide.BUY, 1.0)
         trades.append(order2)
-        print(f"Trade 2: BUY 1 ETH @ {order2.filled_price:.2f}, slippage {order2.slippage*100:.3f}%")
 
         # Trade 3: Sell 0.05 BTC
         async def price_btc_62k(symbol):
@@ -343,15 +340,13 @@ class TestRealTradesWithWebSocket:
         await paper_trader.update_positions_pnl()
         order3 = await paper_trader.place_market_order("BTCUSDT", OrderSide.SELL, 0.05)
         trades.append(order3)
-        print(f"Trade 3: SELL 0.05 BTC @ {order3.filled_price:.2f}, PnL: {paper_trader.get_total_pnl()}")
 
         assert len(trades) == 3
         assert all(o.status == OrderStatus.FILLED for o in trades)
 
         # Check portfolio
         portfolio_value = paper_trader.get_portfolio_value()
-        pnl = paper_trader.get_total_pnl()
-        print(f"Portfolio value: ${portfolio_value:.2f}, PnL: {pnl}")
+        _pnl = paper_trader.get_total_pnl()
 
         # Sample output for REPORT
         assert portfolio_value > 0

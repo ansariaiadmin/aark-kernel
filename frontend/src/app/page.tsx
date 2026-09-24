@@ -1,9 +1,9 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  ShieldCheck, Activity, Terminal, Play, Square, Settings, Cpu, 
-  Wifi, WifiOff, Send, TrendingUp, TrendingDown, AlertTriangle,
-  CheckCircle, XCircle, Loader2, Wallet, Zap, Brain, Users
+  ShieldCheck, Activity, Terminal, Play, Square, Cpu, 
+  Wifi, WifiOff, Send, TrendingUp, AlertTriangle,
+  Loader2, Wallet, Zap, Brain
 } from 'lucide-react';
 
 interface MarketData {
@@ -80,8 +80,8 @@ export default function Dashboard() {
     volume24h: 0
   });
   
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [positions, setPositions] = useState<Position[]>([]);
+  const [_orders, setOrders] = useState<Order[]>([]);
+  const [_positions, setPositions] = useState<Position[]>([]);
   const [riskMetrics, setRiskMetrics] = useState<RiskMetric[]>([]);
   const [chatMessages, setChatMessages] = useState<AgentMessage[]>([
     { role: 'assistant', content: 'درود ممد جان. ساعت معاملاتی تهران و سشن‌های لندن، نیویورک و توکیو سنکرون شدند. چارت زنده BTCUSDT بدون قطعی متصل است. سناریو یا تحلیل مد نظرت را بفرست.', timestamp: new Date().toISOString() }
@@ -89,7 +89,7 @@ export default function Dashboard() {
   const [chatInput, setChatInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
-  const [ws, setWs] = useState<WebSocket | null>(null);
+  const [_ws, setWs] = useState<WebSocket | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -121,8 +121,8 @@ export default function Dashboard() {
       try {
         const data = JSON.parse(event.data);
         handleWebSocketMessage(data);
-      } catch (e) {
-        console.error('WS parse error', e);
+      } catch {
+      console.error('WS parse error');
       }
     };
 
@@ -131,7 +131,7 @@ export default function Dashboard() {
       addLog('[WS] Connection closed');
     };
 
-    websocket.onerror = (err) => {
+    websocket.onerror = (_err) => {
       addLog('[WS] Connection error');
     };
 
@@ -223,8 +223,8 @@ export default function Dashboard() {
         const risk = await riskRes.json();
         setRiskMetrics(risk.metrics);
       }
-    } catch (e) {
-      addLog('Failed to fetch initial data', 'error');
+    } catch {
+      addLog('Failed to fetch initial data: ' + String(_e), 'error');
     }
   };
 
@@ -240,7 +240,7 @@ export default function Dashboard() {
         setVaultStatus('disconnected');
         setVaultLog(data.message);
       }
-    } catch (e) {
+    } catch {
       setVaultStatus('disconnected');
       setVaultLog('خطای سرور');
     }
@@ -262,7 +262,7 @@ export default function Dashboard() {
       setApiKey('');
       setVaultLog(data.message);
       setTimeout(checkVault, 1000);
-    } catch (e) {
+    } catch {
       setVaultLog('خطا در ذخیره کلید');
     }
   };
@@ -304,7 +304,7 @@ export default function Dashboard() {
     }
   };
 
-  const placeOrder = async (side: 'buy' | 'sell') => {
+  const _placeOrder = async (side: 'buy' | 'sell') => {
     try {
       const res = await fetch('/api/v1/trading/orders', {
         method: 'POST',
@@ -321,8 +321,8 @@ export default function Dashboard() {
         addLog(`[ORDER] ${side.toUpperCase()} order placed: ${data.order_id}`);
         fetchInitialData();
       }
-    } catch (e) {
-      addLog('Order failed', 'error');
+    } catch {
+      addLog('Order failed: ' + String(_e), 'error');
     }
   };
 
