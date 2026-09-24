@@ -9,6 +9,37 @@
 
 > Production-grade, multi-agent trading system with multi-model AI router, real trading engine (Nobitex), paper trading, advanced risk (VaR, CVaR, stress, correlation, backtest), JWT + RBAC, WebSocket pub/sub, and enterprise observability — all with 54 automated tests.
 
+## 🚀 برای افراد غیر فنی / For Non-Technical Users — نصب در ۱ دقیقه!
+
+**فقط یک دستور / Just one command:**
+
+```bash
+git clone https://github.com/ansariaiadmin/aark-kernel.git
+cd aark-kernel
+chmod +x install.sh
+./install.sh
+```
+
+سپس مرورگر را باز کنید و تمام! / Then open browser and done!
+
+- **راهنمای کامل فارسی:** [`INSTALL.md`](INSTALL.md) یا [`docs/USER_GUIDE_FA.md`](docs/USER_GUIDE_FA.md)
+- **Full English Guide:** [`docs/USER_GUIDE_EN.md`](docs/USER_GUIDE_EN.md)
+- **آپدیت:** `./update.sh` (بکاپ خودکار + آپدیت + سلامت چک)
+- **وضعیت:** `./status.sh` | **لاگ:** `./logs.sh` | **توقف:** `./stop.sh`
+
+**ویژگی‌های نسخه v1.0.1 / v0.9.1:**
+- ✅ نصب خودکار تمیز (clean install) — چک Docker، ساخت .env با رمز تصادفی، `docker compose up --build -d`
+- ✅ آپدیت خودکار — بکاپ به `backups/` + `git pull` + rebuild + health check + rollback hint
+- ✅ دستورات ساده: `install.sh`, `update.sh`, `start.sh`, `stop.sh`, `status.sh`, `logs.sh`, `backup.sh`
+- ✅ ویندوز: `install.bat`, `update.bat`, etc.
+- ✅ آموزش کامل تمام بخش‌ها در `docs/USER_GUIDE_FA.md` (فارسی)
+
+> **برای افراد کاملا غیر فنی:** فقط `install.sh` را اجرا کنید، بعد آدرس را در مرورگر باز کنید — همین! (see `INSTALL.md`)
+
+---
+
+
+
 ---
 
 ## What this proves (for freelance clients)
