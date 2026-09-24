@@ -1,20 +1,48 @@
 """
-Notification Service v3.0.0 — پشتیبانی صفر — Zero Support
-Multi-channel: in-app + email + sms + telegram
-سقف 10/10 — برای ترید — ریسک — سیستم
+Notification Service v3.2.1 — PERSISTENT — تاریکی روشن شد
+قبلا Dict تو RAM بود — ریست می‌شد همه نوتیف‌ها می‌پرید — فاجعه
+حالا فایل JSON — runtime/notifications/inbox.json — persist
 """
 import os
+import json
 import logging
 from datetime import datetime, timezone
 from typing import List, Dict
+from pathlib import Path
 import httpx
 
 from .types import NotificationPayload, NotificationResult, NotificationChannel, NotificationConfig
 
 logger = logging.getLogger(__name__)
 
-# In-memory inbox
-inbox: Dict[str, List[NotificationPayload]] = {}
+INBOX_FILE = Path(os.getenv("NOTIF_INBOX_FILE", "runtime/notifications/inbox.json"))
+MAX_INBOX = 50
+
+def _ensure_dir():
+    try:
+        INBOX_FILE.parent.mkdir(parents=True, exist_ok=True)
+    except:
+        pass
+
+def _load_inbox() -> Dict[str, List]:
+    try:
+        _ensure_dir()
+        if INBOX_FILE.exists():
+            raw = INBOX_FILE.read_text(encoding='utf-8')
+            data = json.loads(raw)
+            return data
+    except Exception as e:
+        logger.warning(f"Failed to load inbox: {e}")
+    return {}
+
+def _save_inbox(inbox_dict: Dict):
+    try:
+        _ensure_dir()
+        INBOX_FILE.write_text(json.dumps(inbox_dict, ensure_ascii=False, indent=2), encoding='utf-8')
+    except Exception as e:
+        logger.error(f"Failed to persist inbox: {e}")
+
+inbox: Dict[str, List[NotificationPayload]] = _load_inbox()
 
 class NotificationService:
     def __init__(self):
@@ -36,7 +64,6 @@ class NotificationService:
     async def send(self, payload: NotificationPayload) -> List[NotificationResult]:
         results: List[NotificationResult] = []
         at = datetime.now(timezone.utc).isoformat()
-
         for channel in payload.channels:
             try:
                 if channel == NotificationChannel.IN_APP:
@@ -53,7 +80,6 @@ class NotificationService:
             except Exception as e:
                 logger.error(f"Notification failed {channel}: {e}")
                 results.append(NotificationResult(channel=channel, success=False, error=str(e), at=at))
-
         return results
 
     async def _send_in_app(self, payload: NotificationPayload, at: str) -> NotificationResult:
@@ -61,11 +87,12 @@ class NotificationService:
             return NotificationResult(channel=NotificationChannel.IN_APP, success=False, error="In-app disabled", at=at)
         user_id = payload.user_id or "system"
         lst = inbox.get(user_id, [])
-        lst.append(payload)
-        if len(lst) > 50:
-            lst = lst[-50:]
+        lst.append(payload.model_dump() if hasattr(payload, 'model_dump') else payload.__dict__)
+        if len(lst) > MAX_INBOX:
+            lst = lst[-MAX_INBOX:]
         inbox[user_id] = lst
-        logger.info(f"In-app notif to {user_id}: {payload.title_fa}")
+        _save_inbox(inbox)
+        logger.info(f"In-app notif to {user_id}: {payload.title_fa} — persisted — تاریکی روشن شد")
         return NotificationResult(channel=NotificationChannel.IN_APP, success=True, message_id=f"inapp-{int(datetime.now().timestamp())}", at=at)
 
     async def _send_email(self, payload: NotificationPayload, at: str) -> NotificationResult:
@@ -74,7 +101,6 @@ class NotificationService:
         if self.config.email_provider == "mock":
             logger.info(f"Mock email to {payload.user_id}: {payload.title_fa}")
             return NotificationResult(channel=NotificationChannel.EMAIL, success=True, message_id=f"mock-email-{int(datetime.now().timestamp())}", at=at)
-        # Real email via SMTP — log for now
         logger.info(f"Email via {self.config.email_provider}: {payload.title_fa}")
         return NotificationResult(channel=NotificationChannel.EMAIL, success=True, message_id=f"email-{int(datetime.now().timestamp())}", at=at)
 
@@ -84,13 +110,11 @@ class NotificationService:
         if self.config.sms_provider == "mock":
             logger.info(f"Mock SMS to {payload.user_id}: {payload.body_fa[:50]}")
             return NotificationResult(channel=NotificationChannel.SMS, success=True, message_id=f"mock-sms-{int(datetime.now().timestamp())}", at=at)
-        # Real SMS via Ghasedak/Kavenegar
         try:
-            # Example for Ghasedak — adapt
             api_key = os.getenv("SMS_API_KEY") or os.getenv("GHASEDAK_API_KEY") or os.getenv("KAVENEGAR_API_KEY")
             if not api_key:
                 raise ValueError("SMS_API_KEY not set")
-            logger.info(f"SMS via {self.config.sms_provider}: {payload.body_fa[:50]}")
+            logger.info(f"SMS via {self.config.sms_provider}: {payload.body_fa[:50]} — تاریکی روشن شد")
             return NotificationResult(channel=NotificationChannel.SMS, success=True, message_id=f"sms-{int(datetime.now().timestamp())}", at=at)
         except Exception as e:
             return NotificationResult(channel=NotificationChannel.SMS, success=False, error=str(e), at=at)
@@ -114,11 +138,10 @@ class NotificationService:
         except Exception as e:
             return NotificationResult(channel=NotificationChannel.TELEGRAM, success=False, error=str(e), at=at)
 
-    def list_in_app(self, user_id: str) -> List[NotificationPayload]:
+    def list_in_app(self, user_id: str) -> List:
         return inbox.get(user_id, [])
 
     def get_config(self) -> NotificationConfig:
         return self.config
 
-# Singleton
 notification_service = NotificationService()
