@@ -61,7 +61,7 @@ Kernel — Trading + AI + Risk + Notification — Zero Support
 BANNER
 echo -e "${NC}"
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  🧙‍♂️ جادوگر نصب AARK v3.0.0 — پشتیبانی صفر${NC}"
+echo -e "${BLUE}  🧙‍♂️ جادوگر نصب AARK v3.1.0 — پشتیبانی صفر — تاریکی روشن شد${NC}"
 echo -e "${BLUE}  ترید + AI + ریسک + SMS + ناتیف${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
@@ -119,6 +119,7 @@ sleep 1
 echo ""
 echo -e "${BLUE}[6/8] 📱 SMS + 📧 Email — برای ناتیف ترید${NC}"
 explain "وقتی ترید انجام می‌شه یا ریسک بالا می‌ره، با پیامک/ایمیل خبر می‌ده"
+# هزینه: هر پیامک ~120 تومان — تاریکی روشن شد — cost warning
 SMS_PROVIDER=$(ask_with_help "پنل پیامکی کدوم؟" "برای ناتیف ترید — مثل 'ترید انجام شد' — اگر نداری mock" "ghasedak یا kavenegar یا mock" "https://ghasedak.me/ — API Key" "mock" "false")
 SMS_KEY=""
 if [ "$SMS_PROVIDER" != "mock" ]; then
@@ -153,8 +154,19 @@ sleep 1
 
 echo ""
 echo -e "${BLUE}[8/8] ⚙️ ساخت .env + 🏗️ اجرا${NC}"
+if [ -f .env ]; then
+  echo -e "${YELLOW}  .env وجود دارد — keep/new/backup? — تاریکی روشن شد — idempotency${NC}"
+  read -p "   keep (نگه دار) / new (جدید) / backup (بکاپ بعد جدید) [keep]: " KEEP_ENV
+  [ -z "$KEEP_ENV" ] && KEEP_ENV="keep"
+  if [ "$KEEP_ENV" = "backup" ]; then cp .env .env.backup.$(date +%Y%m%d_%H%M%S); echo -e "${GREEN}✅ بکاپ گرفته شد — تاریکی روشن شد${NC}"; KEEP_ENV="new"; fi
+  if [ "$KEEP_ENV" = "keep" ]; then echo -e "${GREEN}✅ .env نگه داشته شد — idempotency — تاریکی روشن شد${NC}"; SKIP_ENV="true"; else SKIP_ENV="false"; fi
+else
+  SKIP_ENV="false"
+fi
+
+if [ "$SKIP_ENV" = "false" ]; then
 cat > .env <<EOF
-# AARK Kernel — .env — جادوگر v3.0.0 — پشتیبانی صفر — $(date)
+# AARK Kernel — .env — جادوگر v3.1.0 — پشتیبانی صفر — تاریکی روشن شد — $(date)
 # دیتابیس
 API_SECRET_KEY=${SECRET_API}
 POSTGRES_DB=aark_db
@@ -180,6 +192,7 @@ NOBITEX_API_KEY=${NOBITEX_KEY}
 NOBITEX_API_SECRET=${NOBITEX_SECRET}
 
 # SMS — پنل پیامکی — برای ناتیف ترید
+# هزینه: هر پیامک ~120 تومان — تاریکی روشن شد — cost warning
 SMS_PROVIDER=${SMS_PROVIDER}
 SMS_API_KEY=${SMS_KEY}
 SMS_SENDER=
@@ -209,7 +222,13 @@ LOG_LEVEL=INFO
 ENVIRONMENT=development
 EOF
 
-ok ".env ساخته شد — $(wc -l < .env) خط — با توضیح فارسی"
+chmod 600 .env 2>/dev/null || true
+ok ".env ساخته شد — permission 600 — امن — تاریکی روشن شد"
+fi
+if [ "$SKIP_ENV" = "true" ]; then
+  chmod 600 .env 2>/dev/null || true
+  echo -e "${GREEN}✅ .env permission 600 — امن — تاریکی روشن شد${NC}"
+fi — امن — تاریکی روشن شد — $(wc -l < .env) خط — با توضیح فارسی"
 
 echo -e "${MAGENTA}  docker compose up --build -d${NC}"
 docker compose up --build -d 2>&1 | tail -n 20 || docker compose up -d
