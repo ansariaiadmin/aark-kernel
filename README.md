@@ -1,13 +1,13 @@
 # AARK Kernel v2.2 — Enterprise Financial Trading Platform
 
 [![Build](https://github.com/ansariaiadmin/aark-kernel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ansariaiadmin/aark-kernel/actions)
-[![Tests](https://img.shields.io/badge/tests-39%20passed-brightgreen)](https://github.com/ansariaiadmin/aark-kernel/actions)
+[![Tests](https://img.shields.io/badge/tests-54%20passed-brightgreen)](https://github.com/ansariaiadmin/aark-kernel/actions)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](docker-compose.yml)
 
-> Production-grade, multi-agent trading system with multi-model AI router, real trading engine (Nobitex), paper trading, advanced risk (VaR, CVaR, stress, correlation), JWT + RBAC, WebSocket pub/sub, and enterprise observability — all with 39 automated tests.
+> Production-grade, multi-agent trading system with multi-model AI router, real trading engine (Nobitex), paper trading, advanced risk (VaR, CVaR, stress, correlation, backtest), JWT + RBAC, WebSocket pub/sub, and enterprise observability — all with 54 automated tests.
 
 ---
 
@@ -111,11 +111,14 @@ cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 # Separate terminal
 cd frontend && npm install && npm run dev
 
-# Tests (39 tests)
+# Tests (54 tests)
 cd backend
-pytest -v
-pytest tests/test_risk_engine.py -v  # 25 risk tests
-pytest tests/test_paper_trader.py -v # 14 paper trading tests
+pytest -q
+# 39 original risk+paper + 7 v22 zero env + 8 var_backtest+websocket mock
+pytest tests/test_risk_engine.py -q  # 25 risk
+pytest tests/test_paper_trader.py -q # 14 paper
+pytest tests/test_v22.py -q          # 7 v22 zero env via AsyncMock
+pytest tests/test_var_backtest.py -q # 8 VaR backtest + websocket mock
 ```
 
 ---
@@ -126,9 +129,36 @@ pytest tests/test_paper_trader.py -v # 14 paper trading tests
 |-------|---------|---------|-------|
 | **L1 Hardening** | Structured logging, health, metrics, config | JSON logs + correlation IDs, liveness/readiness, Prometheus, Pydantic Settings | 5 |
 | **L2 AI** | Multi-model router, memory, streaming, tools | Ollama/OpenAI/Anthropic/Groq, auto-summarization, SSE, 13 tools | 8 |
-| **L3 Trading** | Nobitex + paper trading | Market/limit/stop, batch, positions + PnL, WebSocket updates, paper with slippage 0.1-0.3% | 14 |
-| **L4 Risk** | VaR, CVaR, stress, correlation, sizing | Historical/Parametric/Monte Carlo VaR, 6 scenarios (crash, crypto winter), HHI, volatility targeting | 25 |
-| **L5 Enterprise** | JWT, RBAC, audit, WebSocket, multi-user | bcrypt cost 12, Admin/Trader/Viewer, isolated vaults, pub/sub | 6 |
+| **L3 Trading** | Nobitex + paper trading + websocket mock e2e | Market/limit/stop, batch, positions + PnL, WebSocket updates, paper with slippage 0.1-0.3%, Nobitex WS mock reconnection | 14+3 |
+| **L4 Risk** | VaR, CVaR, stress, correlation, sizing + backtest | Historical/Parametric/Monte Carlo VaR, 6 scenarios (crash, crypto winter), HHI, volatility targeting, VaR backtest Kupiec POF historical vs parametric | 25+5 |
+| **L5 Enterprise** | JWT, RBAC, audit, WebSocket, multi-user + v22 zero env | bcrypt cost 12, Admin/Trader/Viewer, isolated vaults, pub/sub, test_v22 AsyncMock zero env | 6+7 |
+
+## 10/10 Fixes
+
+- **test_v22 zero env:** `backend/tests/test_v22.py` now uses `AsyncMock`+`MagicMock` + `postgresql+asyncpg` URL, zero external env, no real DB/Redis.
+- **VaR backtest:** `backend/tests/test_var_backtest.py` 8 tests: historical vs parametric similarity, violation count, Kupiec POF, cvar>=var, Nobitex websocket mock e2e price stream + reconnection + order update via paper trader.
+- **utcnow fix:** 8 files `datetime.now(timezone.utc)` replacing `utcnow()`.
+- **recharts TODO:** TradingView iframe + explicit v2 for LineChart, documented in ROADMAP.
+- **Docker:** compose healthy postgres+redis+backend+frontend, healthcheck.
+- **CI:** ruff+pytest+build+docker.
+- **Linter 0:** F403 import * fixed via side-effect import, F821 np fixed via import numpy as np, ruff 0.
+- **Security 0:** secret scan 0, .env.example complete.
+
+## Sample Output
+
+```
+$ pytest backend/tests/ -q
+......................................................
+54 passed in 1.84s
+
+$ ruff check backend/
+All checks passed!
+
+$ curl http://localhost:8000/api/v1/risk/var?method=historical
+{"var_95":1250.5,"cvar_95":1875.2,"method":"historical"}
+```
+
+## Features Table (legacy)
 
 **ASCII Demo — Risk Engine:**
 
