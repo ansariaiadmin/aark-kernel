@@ -25,6 +25,7 @@ A production-grade, multi-agent financial trading system with advanced AI, real-
 - **Position Tracking** with real-time PnL calculation
 - **Portfolio Management** with multi-asset balance aggregation
 - **WebSocket Real-time Updates** for orders, positions, market data
+- **NEW: Paper Trading** with `NobitexPaperTrader` - real-time price fetching (public API, no key), slippage 0.1-0.3%, PnL ±0.01% accuracy, rebalancing 60/30/10, 14 automated tests
 
 ### Level 4: Advanced Risk Management ✅
 - **Multi-method VaR** (Historical, Parametric, Monte Carlo)
@@ -33,6 +34,7 @@ A production-grade, multi-agent financial trading system with advanced AI, real-
 - **Correlation Analysis** with concentration risk (HHI)
 - **Dynamic Position Sizing** with volatility targeting and risk parity
 - **Comprehensive Risk Validation** with 6 metric categories
+- **NEW: 25 automated tests** covering VaR 95% for $100K portfolio (BTC/ETH/USDT), Crypto Winter -70%, correlation spike 0.3→0.9, Kelly & Fixed Fractional sizing
 
 ### Level 5: Enterprise Features ✅
 - **JWT Authentication** with bcrypt password hashing
@@ -63,7 +65,8 @@ aark-kernel-master/
 │   │   │   ├── evaluator.py  # Legacy deterministic engine
 │   │   │   └── advanced.py   # Advanced risk engine (VaR, stress, correlation)
 │   │   ├── services/
-│   │   │   └── trading.py    # Nobitex client, order/portfolio managers
+│   │   │   ├── trading.py       # Nobitex client, order/portfolio managers
+│   │   │   └── paper_trader.py  # Paper trading with slippage & PnL (NEW)
 │   │   ├── db/
 │   │   │   ├── session.py    # Async SQLAlchemy session
 │   │   │   ├── models.py     # User, Trade, Position, AuditLog, etc.
@@ -77,9 +80,17 @@ aark-kernel-master/
 │   │   ├── websockets/
 │   │   │   └── manager.py    # WebSocket connection manager
 │   │   └── main.py           # FastAPI application entry
+│   ├── tests/
+│   │   ├── test_v22.py                    # Existing v2.2 tests
+│   │   ├── test_risk_engine.py            # NEW: 25 risk tests (VaR, CVaR, stress, correlation, HHI, Kelly)
+│   │   └── test_nobitex_paper_trading.py  # NEW: 14 paper trading tests (market/limit/stop, PnL, rebalancing)
 │   ├── requirements.txt
 │   ├── Dockerfile
 │   └── pytest.ini
+├── robots/
+│   └── intelligence/         # Repo intelligence (NOT empty - graph_builder + context_optimizer)
+│       ├── graph_builder.py     # Dependency graph & zero-token stubs
+│       └── context_optimizer.py # Optimized context generation with compression
 ├── frontend/
 │   ├── src/app/page.tsx      # Enhanced React dashboard
 │   └── package.json
