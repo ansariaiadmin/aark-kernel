@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AARK Cyber Ops // سامانه یکپارچه مانیتورینگ و ترید</title>
+<style>
+  @import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');
+
+  :root {
+    --bg-base: #050811;
+    --bg-surface: #0b1220;
+    --border-subtle: rgba(56, 189, 248, 0.18);
+    --cyan-glow: #00f2fe;
+    --accent-blue: #38bdf8;
+    --emerald-ok: #10b981;
+    --rose-err: #f43f5e;
+    --amber-warn: #f59e0b;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Vazirmatn', system-ui, sans-serif; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* هدر ارتقا یافته با تایم‌زون و سشن‌های ترید */
+  header {
+    background: rgba(11, 18, 32, 0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 10px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brand-zone { display: flex; align-items: center; gap: 12px; }
+  .logo-box {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: linear-gradient(135deg, #00f2fe, #0284c7);
+    color: #050811; font-weight: 900;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .sessions-bar {
+    display: flex; gap: 8px; align-items: center; background: #080d1a;
+    padding: 6px 14px; border-radius: 10px; border: 1px solid var(--border-subtle);
+    font-size: 11.5px;
+  }
+  .session-pill {
+    display: flex; align-items: center; gap: 6px; padding: 2px 8px;
+    border-radius: 6px; background: rgba(255,255,255,0.03);
+  }
+  .pill-dot { width: 7px; height: 7px; border-radius: 50%; background: #475569; }
+  .pill-dot.active { background: var(--emerald-ok); box-shadow: 0 0 8px var(--emerald-ok); }
+
+  .clock-box {
+    display: flex; flex-direction: column; align-items: flex-end;
+    font-size: 11.5px; color: var(--accent-blue); font-weight: 700;
+  }
+  .clock-sub { font-size: 10px; color: var(--text-muted); font-weight: normal; }
+
+  main {
+    flex: 1; max-width: 1650px; width: 100%; margin: 0 auto;
+    padding: 16px; display: grid; grid-template-columns: 360px 1fr; gap: 16px;
+  }
+  @media(max-width: 1024px) { main { grid-template-columns: 1fr; } }
+
+  .card {
+    background: rgba(11, 18, 32, 0.7);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .card-header {
+    padding: 10px 14px; background: rgba(15, 23, 42, 0.7);
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 12.5px; font-weight: 700; color: var(--accent-blue);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  .sidebar { display: flex; flex-direction: column; gap: 14px; }
+  input[type="text"], input[type="password"] {
+    width: 100%; background: #070c17; border: 1px solid #1e293b;
+    color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 12.5px;
+    outline: none;
+  }
+  input[type="text"]:focus, input[type="password"]:focus { border-color: var(--cyan-glow); }
+  
+  .btn {
+    background: linear-gradient(135deg, #00f2fe, #0284c7);
+    border: none; color: #040914; font-weight: 700;
+    padding: 9px 14px; border-radius: 8px; cursor: pointer; font-size: 12px;
+  }
+
+  /* قاب لایو تضمینی TradingView بدون وابستگی و بدون قطعی */
+  .chart-container {
+    height: 420px; width: 100%; position: relative; background: #000;
+  }
+  iframe.tv-embed {
+    width: 100%; height: 100%; border: none;
+  }
+
+  #chatArea {
+    flex: 1; height: 260px; overflow-y: auto; padding: 14px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .msg-row { display: flex; gap: 8px; }
+  .msg-row.user { flex-direction: row-reverse; }
+  .msg-bubble {
+    max-width: 80%; padding: 10px 14px; border-radius: 10px;
+    font-size: 12.5px; line-height: 1.6;
+  }
+  .msg-bubble.ai { background: #0e1726; border: 1px solid var(--border-subtle); }
+  .msg-bubble.user { background: #0284c7; color: #fff; }
+
+  .badge-status { padding: 2px 7px; border-radius: 5px; font-size: 10.5px; font-weight: 700; }
+  .badge-buy { background: rgba(16,185,129,0.2); color: #34d399; }
+  .badge-hold { background: rgba(245,158,11,0.2); color: #fbbf24; }
+  .badge-sell { background: rgba(244,63,94,0.2); color: #f87171; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand-zone">
+    <div class="logo-box">ARK</div>
+    <div>
+      <div style="font-weight: 800; font-size: 14px;">سامانه سایبری AARK-Kernel</div>
+      <div style="font-size: 10.5px; color: var(--text-muted);">نسخه ۲.۲ - ماژول امنیتی و دیده‌بانی مارکت</div>
+    </div>
+  </div>
+
+  <!-- سشن‌های جهانی بازار بر اساس ساعت تهران -->
+  <div class="sessions-bar">
+    <span style="color: var(--text-muted); font-size: 11px;">وضعیت سشن‌ها:</span>
+    <div class="session-pill" id="sessTokyo">
+      <div class="pill-dot"></div><span>توکیو / آسیا</span>
+    </div>
+    <div class="session-pill" id="sessLondon">
+      <div class="pill-dot"></div><span>لندن / اروپا</span>
+    </div>
+    <div class="session-pill" id="sessNY">
+      <div class="pill-dot"></div><span>نیویورک / آمریکا</span>
+    </div>
+  </div>
+
+  <!-- ساعت زنده ایران -->
+  <div class="clock-box">
+    <div id="liveClock">۰۰:۰۰:۰۰</div>
+    <div class="clock-sub" id="liveDate">تهران (GMT+3:30)</div>
+  </div>
+</header>
+
+<main>
+  <!-- ستون تنظیمات و والت -->
+  <div class="sidebar">
+    <div class="card" style="padding: 14px;">
+      <div class="card-header" style="padding: 0 0 8px 0; margin-bottom: 10px; background: transparent;">
+        <span>والت امن نوبیتکس (Protected Vault)</span>
+        <span id="vaultStatus" style="font-size: 10.5px; color: var(--rose-err);">غیرفعال</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <input type="password" id="apiKeyInput" placeholder="کلید API امن نوبیتکس...">
+        <button class="btn" id="saveKeyBtn">ذخیره در هسته با مجوز ایزوله</button>
+      </div>
+      <div id="vaultLog" style="margin-top: 8px; font-size: 11px; color: var(--text-muted);">در حال بررسی...</div>
+    </div>
+
+    <!-- تنظیمات ریسک و مدیریت سفارش -->
+    <div class="card" style="padding: 14px;">
+      <div class="card-header" style="padding: 0 0 8px 0; margin-bottom: 10px; background: transparent;">
+        <span>کنترلر بودجه و سقف سفارش</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px;">
+        <span style="color:var(--text-muted)">موجودی تخصیص‌یافته:</span>
+        <span id="balDisplay" style="font-weight:700; color:var(--emerald-ok)">۱۰,۰۰۰,۰۰۰ تومان</span>
+      </div>
+      <input type="range" id="balSlider" min="1000000" max="100000000" step="1000000" value="10000000" style="width:100%; accent-color:var(--cyan-glow); margin:6px 0;">
+      <div style="display:flex; justify-content:space-between; font-size:11.5px;">
+        <span style="color:var(--text-muted)">حداکثر سقف مجاز (۲۰٪):</span>
+        <span id="capDisplay" style="font-weight:700; color:var(--cyan-glow)">۲,۰۰۰,۰۰۰ تومان</span>
+      </div>
+    </div>
+
+    <!-- تلمتری ایجنت -->
+    <div class="card" style="padding: 14px; flex: 1;">
+      <div class="card-header" style="padding: 0 0 8px 0; margin-bottom: 10px; background: transparent;">
+        <span>تلمتری هوشمند تصمیم‌گیری</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px; font-size:12px;">
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-muted)">تصمیم:</span>
+          <span id="telAction" class="badge-status badge-hold">HOLD</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-muted)">ضریب اطمینان:</span>
+          <span id="telConf">۱۰۰٪</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span style="color:var(--text-muted)">تخصیص تایید شده:</span>
+          <span id="telAlloc" style="color:var(--cyan-glow)">۰ تومان</span>
+        </div>
+        <div style="background:#070c17; border:1px solid var(--border-subtle); padding:8px; border-radius:6px; margin-top:4px;">
+          <div style="font-size:11px; color:var(--accent-blue); font-weight:700; margin-bottom:2px;">تحلیل استراتژیک:</div>
+          <p id="telReason" style="font-size:11px; color:var(--text-muted); line-height:1.5;">سیستم آماده دریافت درخواست...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- فضای چارت لایو بدون مسدودی و گفتگوی ایجنت -->
+  <div style="display: flex; flex-direction: column; gap: 16px;">
+    <div class="card chart-container">
+      <!-- لود کامپوننت لایو تریدینگ‌ویو بدون فیلتر و با تایم‌زون دقیق تهران -->
+      <iframe class="tv-embed" 
+        src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_7623a&symbol=BINANCE%3ABTCUSDT&interval=15&hidesidetoolbar=0&symboledit=1&saveimage=0&toolbarbg=0b1220&studies=%5B%5D&theme=dark&style=1&timezone=Asia%2FTehran&locale=fa_IR" 
+        allowtransparency="true" scrolling="no" allowfullscreen></iframe>
+    </div>
+
+    <div class="card" style="flex:1;">
+      <div class="card-header">
+        <span>ترمینال چت با مغز ایجنت (Qwen-2.5)</span>
+        <span style="font-size:10.5px; color:var(--emerald-ok)">● آماده پردازش</span>
+      </div>
+      <div id="chatArea">
+        <div class="msg-row">
+          <div class="msg-bubble ai">
+            درود ممد جان. ساعت معاملاتی تهران و سشن‌های لندن، نیویورک و توکیو سنکرون شدند. چارت زنده BTCUSDT بدون قطعی متصل است. سناریو یا تحلیل مد نظرت را بفرست.
+          </div>
+        </div>
+      </div>
+      <form id="msgForm" style="display:flex; gap:8px; padding:10px; background:#070c17; border-top:1px solid var(--border-subtle);">
+        <input type="text" id="promptInput" placeholder="پیام، سناریو بازار یا فرمان خرید/فروش..." required autocomplete="off">
+        <button type="submit" class="btn" id="sendBtn" style="white-space:nowrap;">ارسال دستور</button>
+      </form>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const toFa = n => (n || 0).toLocaleString('fa-IR');
+
+// موتور ساعت رسمی ایران و سشن‌های بین‌المللی ترید
+function updateClockAndSessions() {
+  const now = new Date();
+  
+  // زمان به افق تهران
+  const tehranTimeStr = now.toLocaleTimeString('fa-IR', { timeZone: 'Asia/Tehran' });
+  const tehranDateStr = now.toLocaleDateString('fa-IR', { timeZone: 'Asia/Tehran', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  
+  $('liveClock').innerText = tehranTimeStr;
+  $('liveDate').innerText = tehranDateStr;
+
+  // محاسبه سشن‌های بازار (به وقت ساعت اعشاری تهران)
+  const tehranDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tehran' }));
+  const hours = tehranDate.getHours() + (tehranDate.getMinutes() / 60);
+
+  // توکیو: 03:30 الی 12:30
+  toggleSession('sessTokyo', hours >= 3.5 && hours < 12.5);
+  // لندن: 11:30 الی 20:30
+  toggleSession('sessLondon', hours >= 11.5 && hours < 20.5);
+  // نیویورک: 16:30 الی 01:30 بامداد
+  toggleSession('sessNY', (hours >= 16.5 && hours <= 24) || (hours >= 0 && hours < 1.5));
+}
+
+function toggleSession(elemId, isActive) {
+  const el = $(elemId);
+  const dot = el.querySelector('.pill-dot');
+  if (isActive) {
+    dot.classList.add('active');
+    el.style.color = 'var(--emerald-ok)';
+  } else {
+    dot.classList.remove('active');
+    el.style.color = 'var(--text-muted)';
+  }
+}
+
+setInterval(updateClockAndSessions, 1000);
+updateClockAndSessions();
+
+// اسلایدر والت
+$('balSlider').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  $('balDisplay').innerText = toFa(v) + ' تومان';
+  $('capDisplay').innerText = toFa(v * 0.20) + ' تومان';
+});
+
+// وضعیت اتصال نوبیتکس
+async function checkVault() {
+  try {
+    const res = await fetch('/api/v1/nobitex/status');
+    const d = await res.json();
+    const st = $('vaultStatus');
+    const log = $('vaultLog');
+    if (d.connected) {
+      st.innerText = 'متصل و فعال';
+      st.style.color = 'var(--emerald-ok)';
+      log.innerText = 'اکانت: ' + d.email;
+    } else {
+      st.innerText = 'غیرفعال';
+      st.style.color = 'var(--rose-err)';
+      log.innerText = d.message;
+    }
+  } catch(e) {
+    $('vaultStatus').innerText = 'خطای سرور';
+  }
+}
+checkVault();
+
+// ذخیره ایمن کلید API
+$('saveKeyBtn').addEventListener('click', async () => {
+  const key = $('apiKeyInput').value.trim();
+  if (key.length < 20) {
+    alert('طول کلید وارد شده نامعتبر است.');
+    return;
+  }
+  $('vaultLog').innerText = 'در حال اعتبارسنجی و ایزوله‌سازی...';
+  const res = await fetch('/api/v1/nobitex/save-key', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ api_key: key })
+  });
+  const d = await res.json();
+  $('apiKeyInput').value = '';
+  $('vaultLog').innerText = d.message;
+  setTimeout(checkVault, 1000);
+});
+
+// ارسال پیام به چت
+function pushChat(text, isAi=false) {
+  const row = document.createElement('div');
+  row.className = 'msg-row ' + (isAi ? '' : 'user');
+  row.innerHTML = `<div class="msg-bubble ${isAi ? 'ai' : 'user'}">${text}</div>`;
+  $('chatArea').appendChild(row);
+  $('chatArea').scrollTop = $('chatArea').scrollHeight;
+}
+
+$('msgForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const val = $('promptInput').value.trim();
+  if (!val) return;
+
+  pushChat(val, false);
+  $('promptInput').value = '';
+  $('sendBtn').disabled = true;
+
+  try {
+    const res = await fetch('/api/v1/agent/evaluate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        wallet_balance_irt: parseFloat($('balSlider').value),
+        market_context: val
+      })
+    });
+    const d = await res.json();
+    const dec = d.agent_decision || {};
+    pushChat(dec.reply_message || dec.reason, true);
+
+    const act = (d.execution.action || 'HOLD').toUpperCase();
+    const actBadge = $('telAction');
+    actBadge.innerText = act;
+    actBadge.className = 'badge-status ' + (act === 'BUY' ? 'badge-buy' : act === 'SELL' ? 'badge-sell' : 'badge-hold');
+    $('telConf').innerText = toFa(dec.confidence || 0) + '٪';
+    $('telAlloc').innerText = toFa(d.execution.allocated_irt || 0) + ' تومان';
+    $('telReason').innerText = dec.reason || '-';
+  } catch(err) {
+    pushChat('خطا در پردازش هوشمند هسته: ' + err.message, true);
+  } finally {
+    $('sendBtn').disabled = false;
+  }
+});
+</script>
+</body>
+</html>
