@@ -13,6 +13,11 @@ on:
 
 permissions:
   contents: read
+  # CodeQL uploads its SARIF results to the code scanning API. Without this
+  # permission the analysis runs to completion and then fails at upload, which
+  # is what happened on the first pushes to main: the job reported failure even
+  # though nothing was wrong with the code.
+  security-events: write
 
 jobs:
   analyze:
