@@ -6,7 +6,7 @@ warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 err() { echo -e "${RED}❌ $1${NC}"; }
 info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
 
-echo -e "${BOLD}${BLUE}🧪 Smoke Test — aark-kernel — v3.1.0 — تاریکی روشن شد${NC}"
+echo -e "${BOLD}${BLUE}🧪 Smoke Test — aark-kernel${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
@@ -18,36 +18,36 @@ curl -sf http://localhost:3000 >/dev/null 2>&1 && ok "http://localhost:3000 — 
 curl -sf http://localhost:8000 >/dev/null 2>&1 && ok "http://localhost:8000 — اوکی" || warn "http://localhost:8000 — fail"
 echo ""
 
-echo -e "${BOLD}[2/4] 🤖 AI Provider — با هزینه — تاریکی روشن شد${NC}"
+echo -e "${BOLD}[2/4] 🤖 AI Provider — با هزینه${NC}"
 if [ "$AI_PROVIDER" = "mock" ] || [ -z "$AI_PROVIDER" ]; then
   warn "AI: mock — رایگان — بعداً کلید واقعی"
 else
-  ok "AI: $AI_PROVIDER — کلید ${OPENAI_API_KEY:0:10}... — هزینه هر درخواست ~0.01 دلار — تاریکی روشن شد"
+  ok "AI: $AI_PROVIDER — کلید ${OPENAI_API_KEY:0:10}... — هزینه هر درخواست ~0.01 دلار"
 fi
 echo ""
 
-echo -e "${BOLD}[3/4] 📱 SMS — با هزینه + تست واقعی — تاریکی روشن شد${NC}"
+echo -e "${BOLD}[3/4] 📱 SMS — با هزینه + تست واقعی${NC}"
 if [ "$SMS_PROVIDER" = "mock" ] || [ -z "$SMS_PROVIDER" ]; then
   warn "SMS: mock — رایگان — پیامک تو لاگ"
 else
-  ok "SMS: $SMS_PROVIDER — ${SMS_API_KEY:0:10}... — هزینه هر پیامک ~120 تومان — تاریکی روشن شد"
+  ok "SMS: $SMS_PROVIDER — ${SMS_API_KEY:0:10}... — هزینه هر پیامک ~120 تومان"
   if command -v curl &> /dev/null; then
     if [ "$SMS_PROVIDER" = "ghasedak" ]; then
-      curl -sf -H "apikey: $SMS_API_KEY" https://api.ghasedak.me/v2/account/info -o /dev/null 2>&1 && ok "Ghasedak API — اوکی — اعتبار داره — تاریکی روشن شد" || err "Ghasedak API — fail — کلید چک کن"
+      curl -sf -H "apikey: $SMS_API_KEY" https://api.ghasedak.me/v2/account/info -o /dev/null 2>&1 && ok "Ghasedak API — اوکی — اعتبار داره" || err "Ghasedak API — fail — کلید چک کن"
     fi
   fi
 fi
 echo ""
 
-echo -e "${BOLD}[4/4] 🔔 Telegram — رایگان — تاریکی روشن شد${NC}"
+echo -e "${BOLD}[4/4] 🔔 Telegram — رایگان${NC}"
 if [ "$NOTIF_TELEGRAM" = "yes" ] || [ "$NOTIF_TELEGRAM" = "true" ]; then
   if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
-    ok "Telegram: روشن — Bot ${TELEGRAM_BOT_TOKEN:0:10}... Chat $TELEGRAM_CHAT_ID — رایگان — تاریکی روشن شد"
+    ok "Telegram: روشن — Bot ${TELEGRAM_BOT_TOKEN:0:10}... Chat $TELEGRAM_CHAT_ID — رایگان"
     if curl -sf https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getMe -o /dev/null 2>&1; then
       ok "Telegram Bot — اوکی"
       read -p "   پیام تست به تلگرام بفرستم؟ (y/n) [n]: " send_test
       if [ "$send_test" = "y" ]; then
-        curl -sf -X POST -H "Content-Type: application/json" -d "{\"chat_id\":\"$TELEGRAM_CHAT_ID\",\"text\":\"🧪 تست aark-kernel v3.1.0 — تاریکی روشن شد — $(date)\"}" https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage -o /dev/null 2>&1 && ok "Telegram پیام تست فرستاده شد — چک کن" || err "Telegram fail"
+        curl -sf -X POST -H "Content-Type: application/json" -d "{\"chat_id\":\"$TELEGRAM_CHAT_ID\",\"text\":\"🧪 AARK Kernel v3.3.0 connection test — $(date)\"}" https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage -o /dev/null 2>&1 && ok "Telegram پیام تست فرستاده شد — چک کن" || err "Telegram fail"
       fi
     else
       err "Telegram Bot — fail — توکن چک کن"
@@ -61,6 +61,6 @@ fi
 echo ""
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  🎉 Smoke Test تمام — تاریکی روشن شد!${NC}"
+echo -e "${GREEN}  🎉 Smoke Test تمام!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""

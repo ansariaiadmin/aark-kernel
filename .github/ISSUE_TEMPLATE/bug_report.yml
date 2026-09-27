@@ -1,0 +1,100 @@
+name: Bug report
+description: Report a defect so it can be reproduced and fixed
+title: "[Bug] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. A precise report gets fixed; a
+        vague one gets closed. Please fill in as much as you can.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the actual behaviour.
+      placeholder: "When I open the Risk tab, the page returns 500."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+      placeholder: "I expected the VaR result to be displayed."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps, as precise as you can make them.
+      placeholder: |
+        1. Run ./install.sh
+        2. Sign in at http://localhost:3000
+        3. Click the Risk tab
+        4. Enter portfolio_value=100000 and submit
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output or error message
+      description: Paste the exact text. Run `./logs.sh backend` if the platform is running.
+      render: shell
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area?
+      options:
+        - Backend API
+        - Frontend dashboard
+        - Authentication / authorisation
+        - Risk engine
+        - Trading / portfolio
+        - WebSocket / real-time
+        - Installation / Docker
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "From the /api/v1/health response, or the README badge."
+      placeholder: "3.3.0"
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Docker version, browser.
+      placeholder: "Ubuntu 24.04, Docker 27.3.1, Chrome 130"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this is not a duplicate
+          required: true
+        - label: I ran `./smoke-test.sh` and it did not resolve the problem
+          required: false
+        - label: I checked that this is not already tracked in ROADMAP.md
+          required: true

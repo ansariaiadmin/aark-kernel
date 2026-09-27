@@ -1,131 +1,196 @@
-# ROADMAP — aark-kernel
+# Roadmap
 
-**نسخهٔ جاری:** 3.3.0 (مهرشده)
-**منبع حقیقت ورژن:** `backend/app/core/config.py → Settings.APP_VERSION`
-**نگهبان:** `backend/tests/test_release_consistency.py` — اگر README/CHANGELOG/`frontend/package.json` از آن جدا بیفتند، CI قرمز می‌شود.
+**Version:** 3.3.0
 
-> سیاست ورژن‌گذاری: هر فاز با یک **دروازهٔ انتشار** بسته می‌شود. تا وقتی همهٔ
-> معیارهای دروازه سبز نباشند، ورژن bump نمی‌شود و فاز بعدی شروع نمی‌شود.
-
----
-
-## دروازهٔ جهانی (برای همهٔ فازها الزامی)
-
-```bash
-# بک‌اند
-cd backend && ruff check . && pytest tests/ -q          # 0 خطا، 109 پاس
-python -c "from app.main import app; assert len(app.openapi()['paths'])>=39"
-
-# فرانت
-cd frontend && npm run verify                            # lint + typecheck + build
-
-# استقرار
-docker compose config -q && docker compose build         # هر دو ایمیج
-./smoke-test.sh                                          # زنجیرهٔ زنده
-```
-
-هیچ PR بدون سبز شدن هر سه بخش merge نمی‌شود.
+This document is the single place where planned work lives. Nothing here is
+claimed as done. Each phase closes with a **release gate**; the version number
+does not increase until its gate is green.
 
 ---
 
-## ✅ فاز ۰ — یکپارچگی ساخت و سیم‌کشی — **v3.3.0 (انجام شد)**
+## Status at a glance
 
-**هدف:** چیزی که در مستندات ادعا شده، واقعاً وجود داشته باشد و build بشکند نه.
-
-| # | تسک | فایل |
-|---|---|---|
-| 0.1 | mount کردن `api_router` (۱۱ → ۳۹ روت) | `main.py`, `api/v1/__init__.py` |
-| 0.2 | تفکیک روترها به public / protected(JWT) / realtime | `api/v1/__init__.py` |
-| 0.3 | ثبت `CORSMiddleware` از `BACKEND_CORS_ORIGINS` | `main.py` |
-| 0.4 | حذف passlib → bcrypt مستقیم، رفع شکست ۱۰۰٪ هش | `core/auth.py`, `requirements.txt` |
-| 0.5 | `bootstrap_admin()` — شکستن بن‌بست نصب تازه | `db/init_db.py` |
-| 0.6 | رفع کلید ۳۱ کاراکتری CI | `.github/workflows/ci.yml` |
-| 0.7 | رفع ۳ خطای `next build` (`_e` ×2، recharts) | `page.tsx`, `package.json` |
-| 0.8 | پروکسی `/api/v1/*` در Next + حذف آدرس hardcode | `next.config.mjs`, `src/lib/api.ts` |
-| 0.9 | صفحهٔ ورود واقعی → نوشتن `aark_token` → WS زنده | `src/lib/auth.ts`, `page.tsx` |
-| 0.10 | رفع قرارداد body در `/risk/validate` و `/risk/legacy/validate` | `api/v1/risk.py` |
-| 0.11 | رفع `RuntimeError` در `broadcast_to_subscription` | `websockets/manager.py` |
-| 0.12 | رفع close ناموفق WS با توکن بد | `websockets/manager.py` |
-| 0.13 | رفع `sub` رشته‌ای → کلید INTEGER | `core/auth.py` |
-| 0.14 | رفع قیمت Placeholder=0 در `/portfolio/value` | `api/v1/trading.py`, `services/trading.py` |
-| 0.15 | یکسان‌سازی brain، vault، RiskProfile (حذف منابع موازی) | `core/agent.py`, `core/vault.py`, `risk_engine/*` |
-| 0.16 | حذف `app/` یتیم ریشه که `backend/app` را shadow می‌کرد | — |
-| 0.17 | رفع lint فرانت (eslint config, globals, tailwind tokens, `setAsks`) | `eslint.config.mjs`, `tailwind.config.js`, `OrderBook.tsx` |
-| 0.18 | زنده کردن UI مرده: تب‌ها، Kill Switch، BUY/SELL، LineChart، OrderBook | `page.tsx` |
-| 0.19 | ۵۵ تست جدید (wiring + release consistency) | `tests/test_api_wiring.py`, `tests/test_release_consistency.py` |
-| 0.20 | تفکیک `requirements-dev.txt` از ایمیج پروداکشن | `backend/requirements*.txt` |
-| 0.21 | رفع شکست همیشگی job داکر در CI (`env_file: .env` اجباری بود) + نگهبان متغیرهای مستندنشدهٔ compose | `.github/workflows/ci.yml`, `docker-compose.yml` |
-
-**دروازهٔ انتشار v3.3.0:** ✅ ۱۰۹ تست · ✅ ruff 0 · ✅ tsc 0 · ✅ eslint 0 · ✅ `next build` · ✅ ۳۹ روت · ✅ زنجیرهٔ زنده (login → JWT → protected route)
-
----
-
-## 🔜 فاز ۱ — صحت مستندات و سخت‌سازی امنیتی — هدف: **v3.4.0**
-
-**چرا اول این؟** چون فاز ۰ کد را با مستندات آشتی داد؛ حالا مستندات باید با کد آشتی کنند،
-و سه حفرهٔ امنیتی باقی‌مانده باید بسته شوند.
-
-| # | تسک | اولویت | معیار پذیرش |
+| Phase | Theme | Target | Status |
 |---|---|---|---|
-| 1.1 | محافظت از روت‌های ad-hoc در `main.py` — به‌ویژه `POST /nobitex/save-key` (نوشتن کلید صرافی **بدون auth**) و `POST /agents/register` | 🔴 | بدون توکن → ۴۰۱؛ تست‌های `test_v22.py` به‌روز شوند |
-| 1.2 | تصمیم دربارهٔ داشبورد دوم: `backend/app/static/index.html` حذف شود یا به `/ui` منتقل شود و با فرانت یکی شود | 🔴 | فقط یک UI رسمی؛ `Mount("/")` حذف یا مستند شود |
-| 1.3 | بازنویسی `README.md` — حذف هر ادعای اثبات‌نشده (۱۳ ابزار، SMS، `/setup` wizard، curl‌های اشتباه) | 🔴 | هر دستور curl در README با تست اجرا شده باشد |
-| 1.4 | بازنویسی `docs/API.md` از OpenAPI واقعی (تولید خودکار) | 🟠 | diff بین doc و `app.openapi()` صفر باشد |
-| 1.5 | اصلاح `HANDOFF.md` (مسیر اشتباه `api/v1/websockets/manager.py`) و `ARCHITECTURE.md` | 🟠 | مسیرها با درخت واقعی یکی باشند |
-| 1.6 | افزودن `ADMIN_EMAIL/ADMIN_PASSWORD/AARK_VAULT_DIR` به `.env.example` با توضیح فارسی | 🟠 | تست `test_release_consistency` پاس بماند |
-| 1.7 | افزودن rate limiting روی `/auth/login` (جلوگیری از brute-force) | 🟠 | تست: ۶ تلاش → ۴۲۹ |
-| 1.8 | انتقال توکن WS از query param به `Sec-WebSocket-Protocol` (توکن در لاگ پروکسی نماند) | 🟡 | لاگ دسترسی حاوی توکن نباشد |
-| 1.9 | افزودن `pytest --cov` با آستانه (هدف ≥۷۵٪) به CI | 🟡 | badge پوشش در README |
-| 1.10 | افزودن `mypy`/`pyright` با حالت تدریجی | 🟡 | صفر خطا روی `core/`, `api/` |
+| **0** | Build integrity and wiring | v3.3.0 | ✅ **Complete** |
+| **1** | Security hardening and documentation truth | v3.4.0 | 🔜 Next |
+| **2** | Real data and a real agent | v3.5.0 | 📋 Planned |
+| **3** | Product and operational maturity | v4.0.0 | 📋 Planned |
 
-**دروازهٔ انتشار v3.4.0:** همهٔ S1/S2 بسته · مستندات با OpenAPI یکسان · هیچ روت پولی بدون auth · پوشش ≥۷۵٪
+**Guard:** `backend/tests/test_release_consistency.py` turns CI red if
+`README.md`, `CHANGELOG.md`, or `frontend/package.json` drift away from
+`Settings.APP_VERSION`.
 
 ---
 
-## فاز ۲ — واقعی‌سازی لایهٔ داده و ایجنت — هدف: **v3.5.0**
+## Phase 0 — Build integrity and wiring — v3.3.0 ✅
 
-**چرا؟** چون هستهٔ محاسباتی واقعی است ولی **دادهٔ ورودی ساختگی** است.
+Delivered 2026-09-27. See [`CHANGELOG.md`](CHANGELOG.md) for the full entry and
+[`docs/AUDIT.md`](docs/AUDIT.md) for the findings that motivated it.
 
-| # | تسک | معیار پذیرش |
+| # | Task | Artifacts |
 |---|---|---|
-| 2.1 | اتصال ۱۳ ابزار `ToolExecutor` به `services/trading.py` و `risk_engine` واقعی (الان همه `{"price": 0}` برمی‌گردانند) | هر ابزار یک تست integration با mock در سطح HTTP صرافی داشته باشد |
-| 2.2 | جایگزینی `np.random.normal` در `/risk/var` و `/risk/correlation` با دادهٔ واقعی از جدول `market_data` | پاسخ برای دادهٔ ورودی یکسان، قطعی (deterministic) باشد |
-| 2.3 | پایپ‌لاین جمع‌آوری قیمت تاریخچه (scheduler + Nobitex public API) | ۲۵۲ روز داده برای ۵ نماد |
-| 2.4 | **تصمیم:** `services/paper_trader.py` وصل شود یا حذف — الان ۸۷ ارجاع در تست، ۰ در اپ | `EXCHANGE_PROVIDER=mock` واقعاً paper trader را فعال کند |
-| 2.5 | **تصمیم:** `services/notification/` + `services/sms/` وصل شود یا حذف — README وعدهٔ SMS واقعی و fallback و throttling می‌دهد | یا کد وصل است و تست دارد، یا ماژول و ادعای README با هم حذف می‌شوند |
-| 2.6 | نگاشت ~۳۰ کلید `.env.example` به `Settings` (الان `extra="ignore"` ساکتانه دورشان می‌ریزد) | هر کلید مستند، یا خوانده می‌شود یا از `.env.example` حذف |
-| 2.7 | ایزوله‌سازی چندکاربره: `OrderManager`/`PortfolioManager` global هستند (ادعای «isolated vaults» نقض می‌شود) | هر `user_id` مدیر و vault خودش را داشته باشد + تست |
-| 2.8 | راه‌اندازی Alembic به‌جای `create_all` دستی | migration برای هر تغییر مدل |
-| 2.9 | persistence سفارش/پوزیشن در DB (الان در dict حافظه‌اند و با restart می‌پرند) | restart سرویس → سفارش‌ها باقی باشند |
-| 2.10 | حذف یا ادغام `robots/intelligence/` (یتیم کامل) | هیچ ماژول یتیم در ریپو نماند |
+| 0.1 | Restore 23 unmounted endpoints (11 → 39 live routes) | `app/main.py` |
+| 0.2 | Repair `next build` (three TypeScript/recharts errors) | `frontend/src/app/page.tsx`, `package.json` |
+| 0.3 | Replace passlib with direct bcrypt (incompatible with bcrypt ≥ 4.1) | `app/core/auth.py`, `requirements.txt` |
+| 0.4 | Add an idempotent `bootstrap_admin()` | `app/db/init_db.py` |
+| 0.5 | Break the fresh-install deadlock (register requires an ADMIN) | `.env.example`, `install.sh` |
+| 0.6 | Fix the 31-character CI secret against `min_length=32` | `.github/workflows/ci.yml` |
+| 0.7 | Fix three `next build` errors blocking every image build | `frontend/` |
+| 0.8 | Add the `/api/v1/*` rewrite proxy; remove hardcoded origins | `next.config.mjs`, `src/lib/api.ts` |
+| 0.9 | Real login page writing the JWT; live WebSocket | `src/lib/auth.ts`, `page.tsx` |
+| 0.10 | Fix the `/risk/validate` body contract (422 on every call) | `app/api/v1/risk.py` |
+| 0.11 | Fix `RuntimeError` in `broadcast_to_subscription` | `app/websockets/manager.py` |
+| 0.12 | Translate WebSocket auth errors into close code 1008 | `app/websockets/manager.py` |
+| 0.13 | Fix the string `sub` compared against an INTEGER key | `app/core/auth.py` |
+| 0.14 | Fix the `Placeholder` price in `/trading/portfolio/value` | `app/api/v1/trading.py`, `services/trading.py` |
+| 0.15 | Unify brain, vault, and RiskProfile — remove parallel sources | `app/core/agent.py`, `app/core/vault.py`, `risk_engine/*` |
+| 0.16 | Remove the orphaned root `app/` package that shadowed `backend/app` | — |
+| 0.17 | Fix frontend lint (ESLint config, globals, Tailwind tokens, `setAsks`) | `eslint.config.mjs`, `tailwind.config.js`, `OrderBook.tsx` |
+| 0.18 | Bring the dead UI to life: tabs, kill switch, BUY/SELL, chart, order book | `page.tsx` |
+| 0.19 | Add 55 tests (wiring 39 + release consistency 16) | `backend/tests/` |
+| 0.20 | Split `requirements-dev.txt` from the production image | `backend/requirements*.txt` |
+| 0.21 | Fix the permanently red Docker CI job and add a compose-variable guard | `.github/workflows/ci.yml`, `docker-compose.yml` |
+| 0.22 | Working PWA assets and a persistent vault volume | `frontend/public/`, `docker-compose.yml` |
 
-**دروازهٔ انتشار v3.5.0:** صفر stub در مسیر کاربر · صفر دادهٔ تصادفی در پاسخ مالی · صفر ماژول یتیم · restart-safe
+**Release gate — all green:**
+
+- ✅ 109 tests passing
+- ✅ `ruff check` zero errors
+- ✅ `tsc --noEmit` zero errors
+- ✅ `eslint .` zero errors
+- ✅ `next build` exits 0
+- ✅ 39 live routes, matching the OpenAPI schema
+- ✅ Live chain verified: login → JWT → protected route
+- ✅ All 4 CI jobs green
 
 ---
 
-## فاز ۳ — بلوغ محصول و عملیات — هدف: **v4.0.0**
+## Phase 1 — Security hardening and documentation truth — v3.4.0
 
-| # | تسک |
-|---|---|
-| 3.1 | PWA واقعی: انتقال `public/manifest.json` به `frontend/public/`، ساخت `icon-192/512.png` (الان ارجاع به فایل‌های ناموجود)، افزودن `<link rel="manifest">` به `layout.tsx` + service worker |
-| 3.2 | Web Setup Wizard واقعی روی `/setup` (الان در README تبلیغ می‌شود ولی روت وجود ندارد) |
-| 3.3 | LineChart با دادهٔ واقعی (PnL history / backtest) به‌جای `mockData` |
-| 3.4 | OrderBook با دادهٔ واقعی از `/market/orderbook` به‌جای jitter تصادفی |
-| 3.5 | Grafana dashboard + alerting روی `/metrics` (چک‌لیست HANDOFF) |
-| 3.6 | چندصرافی: Binance/OKX adapter پشت انتزاع مشترک |
-| 3.7 | WebSocket خصوصی Nobitex (order updates) به‌جای polling |
-| 3.8 | Pen-test رسمی JWT + RBAC + vault |
-| 3.9 | 2FA (وعدهٔ داده‌شده در SECURITY.md) |
+**Theme:** close the security gaps that were disclosed rather than hidden, and
+make every remaining documentation claim true.
 
-**دروازهٔ انتشار v4.0.0:** هر وعدهٔ README یا پیاده‌سازی شده یا حذف · هیچ فایل manifest/آیکون شکسته · داشبوردها با دادهٔ واقعی
+### Security
+
+| # | Task | Acceptance criteria |
+|---|---|---|
+| 1.1 | Authenticate the seven unprotected routes: `POST /agent/evaluate`, `/agents/*`, `POST /nobitex/save-key`, `DELETE /nobitex/key`, `GET /nobitex/status`, `POST /integrations/accounting/sync` | a test asserts 401 without a token and 200 with one, for each |
+| 1.2 | Add rate limiting to `POST /auth/login` | repeated failures return 429; a test proves it |
+| 1.3 | Move the ad-hoc routes out of `main.py` into the router split | `main.py` contains no route definitions |
+| 1.4 | Add security headers (HSTS, X-Content-Type-Options, Referrer-Policy) | a test asserts the headers are present |
+| 1.5 | Add an automated secret scan to CI | the job fails on a committed-looking secret |
+
+### Documentation truth
+
+| # | Task | Acceptance criteria |
+|---|---|---|
+| 1.6 | Read every `.env.example` key in `Settings`, or delete it | no key is silently dropped by `extra="ignore"`; a test asserts coverage |
+| 1.7 | Reconcile `README.md` capability claims with the code | every row in the capability table is test-backed |
+| 1.8 | Decide the fate of the orphaned subsystems (wire or delete) | no orphan module remains without a decision recorded here |
+| 1.9 | Add an architecture decision record directory | each significant decision has an ADR |
+
+### Quality
+
+| # | Task | Acceptance criteria |
+|---|---|---|
+| 1.10 | Raise coverage on `api/v1/auth.py` and `api/v1/trading.py` | branch coverage ≥ 80% on both |
+| 1.11 | Add a frontend test runner and the first component tests | `npm test` exists and passes in CI |
+
+**Release gate for v3.4.0:**
+
+- [ ] All seven routes authenticated, proven by tests
+- [ ] Rate limiting on login, proven by a test
+- [ ] Secret scan in CI
+- [ ] No `.env.example` key silently ignored
+- [ ] 109+ tests passing, all CI jobs green
+- [ ] Documentation claims reconciled
 
 ---
 
-## بدهی فنی باز (پیوسته)
+## Phase 2 — Real data and a real agent — v3.5.0
 
-- `db/session.py` موتور را در زمان import می‌سازد → هر import به درایور DB و URL معتبر نیاز دارد
-- `get_risk_engine()` و `get_nobitex_client()` از global بدون lock استفاده می‌کنند (race در startup همزمان)
-- `NobitexClient.session` هرگز در lifespan بسته نمی‌شود
-- `structlog` در requirements است ولی استفاده نمی‌شود
-- `frontend/public/` فقط `.gitkeep` دارد؛ `backend/app/static/` داشبورد موازی است
-- `smoke-test.sh` و `status.sh` اندپوینت‌های قدیمی را صدا می‌زنند — باید با ۳۹ روت واقعی هم‌راستا شوند
+**Theme:** replace synthetic and placeholder data with real market data, and
+make the agent genuinely useful.
+
+### Data
+
+| # | Task | Acceptance criteria |
+|---|---|---|
+| 2.1 | Serve `/risk/var` from real historical prices | a test with recorded fixtures returns market-derived numbers, not `np.random` |
+| 2.2 | Serve `/risk/correlation` from real price series | same |
+| 2.3 | Persist market data to the `market_data` table | prices survive a restart |
+| 2.4 | Add a historical backfill command | an operator can populate the price history |
+
+### Agent
+
+| # | Task | Acceptance criteria |
+|---|---|---|
+| 2.5 | Implement the 13 stub tools against real services | no tool returns a placeholder literal |
+| 2.6 | Add tool-level tests | each implemented tool has a test |
+| 2.7 | Make agent answers cite the tool output they used | responses include the data they relied on |
+
+### Subsystem decisions
+
+| # | Task | Acceptance criteria |
+|---|---|---|
+| 2.8 | Wire `paper_trader` into the application, or delete it | 87 test references and 0 application references is resolved either way |
+| 2.9 | Wire `notification/` and `sms/` into the application, or delete them | the README promise matches reality |
+| 2.10 | Resolve `robots/intelligence/` and `backend/app/static/index.html` | no parallel dashboard, no orphan package |
+
+**Release gate for v3.5.0:**
+
+- [ ] No synthetic data on any documented endpoint
+- [ ] Every registered agent tool implemented and tested
+- [ ] Every orphaned subsystem either wired or deleted
+- [ ] All CI jobs green
+
+---
+
+## Phase 3 — Product and operational maturity — v4.0.0
+
+**Theme:** the things that make this operable by a team rather than a single
+operator.
+
+| # | Task | Acceptance criteria |
+|---|---|---|
+| 3.1 | Alembic migrations replacing `init_db.py` | `alembic upgrade head` builds a fresh database; rollback tested |
+| 3.2 | Two-factor authentication | TOTP enrolment and verification with tests |
+| 3.3 | Header-based WebSocket authentication | the token no longer appears in URLs or logs |
+| 3.4 | Real strategy framework with backtesting | at least one strategy runs against recorded data |
+| 3.5 | Grafana dashboard and alert rules | latency, error rate, and readiness failures are alertable |
+| 3.6 | Log aggregation guidance and rotation | `logs/` does not grow without bound |
+| 3.7 | Load test the WebSocket fan-out | documented concurrent-connection ceiling |
+| 3.8 | End-to-end tests in CI against real containers | the stack is exercised as a whole, not only in units |
+
+**Release gate for v4.0.0:**
+
+- [ ] Migrations tested forward and backward
+- [ ] 2FA available and tested
+- [ ] No token in any URL
+- [ ] At least one backtestable strategy
+- [ ] Observability stack documented and deployable
+- [ ] End-to-end tests running in CI
+
+---
+
+## Technical debt register
+
+Items that are not scheduled to a phase but are recorded so they are not lost.
+
+| Item | Impact | Notes |
+|---|---|---|
+| `backend/app/static/index.html` | a second, parallel dashboard that will drift | phase 2.10 |
+| ~30 unread `.env.example` keys | operators set values that do nothing | phase 1.6 |
+| No Alembic | destructive schema changes are manual and risky | phase 3.1 |
+| In-process agent memory | a restart loses conversation context | phase 3 |
+| Single Ollama dependency | a hard dependency for the agent path | phase 2 |
+| `robots/intelligence/` | dead code carried in the image | phase 2.10 |
+
+---
+
+## How to propose work
+
+Open an issue describing the problem, then reference the phase it belongs to. If
+it does not fit any phase, propose a new one — phases are cheap, undocumented
+debt is not.

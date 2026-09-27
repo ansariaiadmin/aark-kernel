@@ -11,7 +11,7 @@ ok() { echo -e "${GREEN}✅ $1${NC}"; }
 warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
 
-echo -e "${BOLD}${BLUE}🔄 آپدیت AiWp — v3.1.0 — تاریکی روشن شد — با بکاپ خودکار + سوال پرووایدر جدید${NC}"
+echo -e "${BOLD}${BLUE}🔄 آپدیت AiWp — با بکاپ خودکار + سوال پرووایدر جدید${NC}"
 echo -e "${BLUE}========================================${NC}"
 
 # Check .env
@@ -20,20 +20,20 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-# Disk check — تاریکی روشن شد
+# Disk check
 if command -v df &> /dev/null; then
   usage=$(df . | tail -n 1 | awk '{print $5}' | sed 's/%//')
   if [ "$usage" -gt 80 ]; then
-    warn "دیسک $usage% پر — بکاپ قدیمی پاک کن — تاریکی روشن شد"
+    warn "دیسک $usage% پر — بکاپ قدیمی پاک کن"
   fi
 fi
 
-# Backup before update — تاریکی روشن شد
-echo -e "${BLUE}📦 بکاپ خودکار قبل از آپدیت — تاریکی روشن شد${NC}"
+# Backup before update
+echo -e "${BLUE}📦 بکاپ خودکار قبل از آپدیت${NC}"
 ./backup.sh 2>/dev/null || echo "بکاپ fail — ولی ادامه می‌دم"
 
-# Check for new env vars in .env.example — تاریکی روشن شد
-echo -e "${BLUE}🔍 چک .env.example برای پرووایدرهای جدید — تاریکی روشن شد${NC}"
+# Check for new env vars in .env.example
+echo -e "${BLUE}🔍 چک .env.example برای پرووایدرهای جدید${NC}"
 if [ -f .env.example ]; then
   new_vars=$(grep -E "NOTIF_|SMS_|TELEGRAM_|AI_PROVIDER" .env.example | cut -d= -f1 | sort | uniq)
   missing=""
@@ -43,21 +43,21 @@ if [ -f .env.example ]; then
     fi
   done
   if [ -n "$missing" ]; then
-    warn "متغیرهای جدید تو .env.example هست ولی تو .env نیست: $missing — تاریکی روشن شد"
-    echo -e "${YELLOW}  می‌خوای اضافه کنم؟ — با سوال پرووایدر — تاریکی روشن شد${NC}"
+    warn "متغیرهای جدید تو .env.example هست ولی تو .env نیست: $missing"
+    echo -e "${YELLOW}  می‌خوای اضافه کنم؟ — با سوال پرووایدر${NC}"
     read -p "   اضافه کنم؟ (y/n) [y]: " add_new
     [ -z "$add_new" ] && add_new="y"
     if [ "$add_new" = "y" ]; then
       for var in $missing; do
         val=$(grep "^$var=" .env.example | cut -d= -f2-)
         echo "$var=$val" >> .env
-        ok "$var اضافه شد: $val — تاریکی روشن شد"
+        ok "$var اضافه شد: $val"
       done
       chmod 600 .env
-      ok ".env آپدیت شد — permission 600 — امن — تاریکی روشن شد"
+      ok ".env آپدیت شد — permission 600 — امن"
     fi
   else
-    ok ".env آپدیت — همه متغیرهای جدید وجود داره — تاریکی روشن شد"
+    ok ".env آپدیت — همه متغیرهای جدید وجود داره"
   fi
 fi
 
@@ -71,19 +71,19 @@ else
 fi
 
 # Docker build
-echo -e "${BLUE}🏗️ Build و restart — تاریکی روشن شد${NC}"
+echo -e "${BLUE}🏗️ Build و restart${NC}"
 if command -v docker &> /dev/null; then
   docker compose up --build -d 2>&1 | tail -n 20
   ok "Build و restart — اوکی"
   
-  echo -e "${BLUE}⏳ صبر برای سلامت — 30 ثانیه — تاریکی روشن شد${NC}"
+  echo -e "${BLUE}⏳ صبر برای سلامت — 30 ثانیه${NC}"
   echo -n "  "
   for i in {1..30}; do
     echo -n "."
     sleep 1
     if curl -sf http://localhost:3000/api/health >/dev/null 2>&1 || curl -sf http://localhost:3000 >/dev/null 2>&1; then
       echo ""
-      ok "سرویس آماده — اوکی — تاریکی روشن شد"
+      ok "سرویس آماده — اوکی"
       break
     fi
   done
@@ -94,7 +94,7 @@ else
 fi
 
 # Health check
-echo -e "${BLUE}❤️ Health check — تاریکی روشن شد${NC}"
+echo -e "${BLUE}❤️ Health check${NC}"
 if command -v curl &> /dev/null; then
   curl -sf http://localhost:3000/api/health >/dev/null 2>&1 && ok "http://localhost:3000/api/health — اوکی" || warn "Health fail — ./logs.sh"
   curl -sf http://localhost:3000 >/dev/null 2>&1 && ok "http://localhost:3000 — اوکی" || warn "Web fail"
@@ -102,10 +102,10 @@ fi
 
 echo ""
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  🎉 آپدیت تمام — تاریکی روشن شد!${NC}"
+echo -e "${GREEN}  🎉 آپدیت تمام!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo -e "${BLUE}📍 http://localhost:3000 — آماده${NC}"
-echo -e "${BLUE}./status.sh — وضعیت پرووایدرها — تاریکی روشن شد${NC}"
-echo -e "${BLUE}./smoke-test.sh — تست کامل — تاریکی روشن شد${NC}"
+echo -e "${BLUE}./status.sh — وضعیت پرووایدرها${NC}"
+echo -e "${BLUE}./smoke-test.sh — تست کامل${NC}"
 echo ""

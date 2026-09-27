@@ -14,7 +14,7 @@ err() { echo -e "${RED}❌ $1${NC}"; }
 info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
 explain() { echo -e "${CYAN}   💡 $1${NC}"; }
 
-echo -e "${BOLD}${BLUE}📊 وضعیت aark-kernel — Status Check v3.1.0 — تاریکی روشن شد${NC}"
+echo -e "${BOLD}${BLUE}📊 AARK Kernel status — v3.3.0${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
@@ -55,7 +55,7 @@ if [ -f .env ]; then
   ok ".env وجود دارد — $(wc -l < .env) خط"
   perms=$(stat -c %a .env 2>/dev/null || stat -f %A .env 2>/dev/null || echo "unknown")
   if [ "$perms" = "600" ]; then
-    ok ".env permission 600 — امن — فقط خودت می‌تونی بخونی — تاریکی روشن شد"
+    ok ".env permission 600 — امن — فقط خودت می‌تونی بخونی"
   else
     warn ".env permission $perms — باید 600 باشه — امن نیست — درست می‌کنم: chmod 600 .env"
     chmod 600 .env 2>/dev/null && ok ".env permission درست شد: 600" || warn "نمی‌تونم permission درست کنم"
@@ -73,8 +73,8 @@ else
 fi
 echo ""
 
-# Providers — تاریکی روشن شد
-echo -e "${BOLD}🤖 پرووایدرها — Providers — تاریکی روشن شد${NC}"
+# Providers
+echo -e "${BOLD}🤖 پرووایدرها — Providers${NC}"
 if [ -f .env ]; then
   source .env 2>/dev/null || true
   
@@ -100,7 +100,7 @@ if [ -f .env ]; then
     warn "  AI: mock — بدون AI واقعی — بعداً از /admin/settings/ai-provider اضافه کن — رایگان"
   fi
 
-  # SMS Provider — تاریکی روشن شد — تست واقعی
+  # SMS Provider — تست واقعی
   echo -e "${CYAN}  SMS Provider:${NC}"
   if [ -n "$SMS_PROVIDER" ] && [ "$SMS_PROVIDER" != "mock" ]; then
     if [ -n "$SMS_API_KEY" ]; then
@@ -148,7 +148,7 @@ if [ -f .env ]; then
     warn "  Email: mock — بدون ایمیل واقعی — تو لاگ — بعداً SMTP اضافه کن — رایگان"
   fi
 
-  # Telegram — تاریکی روشن شد
+  # Telegram
   echo -e "${CYAN}  Telegram Bot:${NC}"
   if [ "$NOTIF_TELEGRAM" = "yes" ] || [ "$NOTIF_TELEGRAM" = "true" ]; then
     if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
@@ -205,9 +205,9 @@ fi
 echo ""
 
 # Disk + Memory
-echo -e "${BOLD}💾 دیسک + حافظه — تاریکی روشن شد${NC}"
+echo -e "${BOLD}💾 دیسک + حافظه${NC}"
 if command -v df &> /dev/null; then
-  df -h . | tail -n 1 | awk '{print "  دیسک: " $4 " آزاد از " $2 " — " $5 " استفاده شده"}'
+  df -h . | tail -n 1 | awk '{print "  دیسک: " $4 " آزاد از " $2 "" $5 " استفاده شده"}'
   usage=$(df . | tail -n 1 | awk '{print $5}' | sed 's/%//')
   if [ "$usage" -gt 80 ]; then
     warn "  دیسک $usage% پر — بکاپ قدیمی رو پاک کن — ./backup.sh"
@@ -231,5 +231,5 @@ echo -e "  ./logs.sh — لاگ"
 echo -e "  ./stop.sh / ./start.sh — خاموش/روشن"
 echo -e "  ./update.sh — آپدیت"
 echo -e "  ./backup.sh — بکاپ"
-echo -e "  ./smoke-test.sh — تست کامل همه پرووایدرها — تاریکی روشن شد — جدید v3.1.0"
+echo -e "  ./smoke-test.sh — تست کامل همه پرووایدرها"
 echo ""

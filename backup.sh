@@ -11,7 +11,7 @@ ok() { echo -e "${GREEN}✅ $1${NC}"; }
 warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
 
-echo -e "${BOLD}${BLUE}💾 بکاپ AiWp — v3.1.0 — تاریکی روشن شد — با encrypt + .env + کلیدها${NC}"
+echo -e "${BOLD}${BLUE}💾 بکاپ AiWp — با encrypt + .env + کلیدها${NC}"
 echo -e "${BLUE}========================================${NC}"
 
 if [ ! -f .env ]; then
@@ -19,13 +19,13 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-# Check .env permission — تاریکی روشن شد
+# Check .env permission
 perms=$(stat -c %a .env 2>/dev/null || stat -f %A .env 2>/dev/null || echo "unknown")
 if [ "$perms" != "600" ]; then
-  warn ".env permission $perms — باید 600 باشه — درست می‌کنم: chmod 600 .env — تاریکی روشن شد"
+  warn ".env permission $perms — باید 600 باشه — درست می‌کنم: chmod 600 .env"
   chmod 600 .env && ok ".env permission 600 — امن" || warn "نمی‌تونم"
 else
-  ok ".env permission 600 — امن — تاریکی روشن شد"
+  ok ".env permission 600 — امن"
 fi
 
 # Backup dir
@@ -35,8 +35,8 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/aark-kernel-backup-$TIMESTAMP.tar.gz"
 BACKUP_ENCRYPTED="$BACKUP_DIR/aark-kernel-backup-$TIMESTAMP.tar.gz.enc"
 
-echo -e "${BLUE}📦 بکاپ — شامل DB + .env + کلیدها — با encrypt — تاریکی روشن شد${NC}"
-info "بکاپ شامل: .env (با کلیدهای SMS, Telegram, AI) + DB dump + uploads — همه با encrypt — امن — تاریکی روشن شد"
+echo -e "${BLUE}📦 بکاپ — شامل DB + .env + کلیدها — با encrypt${NC}"
+info "بکاپ شامل: .env (با کلیدهای SMS, Telegram, AI) + DB dump + uploads — همه با encrypt — امن"
 
 # DB dump if possible
 if command -v docker &> /dev/null && docker compose ps 2>/dev/null | grep -q "Up"; then
@@ -55,30 +55,30 @@ if [ -f /tmp/aark-kernel-db-$TIMESTAMP.sql ]; then
   gzip $BACKUP_FILE 2>/dev/null || true
 fi
 
-# Encrypt backup — تاریکی روشن شد
+# Encrypt backup
 if command -v openssl &> /dev/null; then
-  echo -e "${BLUE}  Encrypt بکاپ با AES-256 — امن — تاریکی روشن شد${NC}"
+  echo -e "${BLUE}  Encrypt بکاپ با AES-256 — امن${NC}"
   BACKUP_KEY=$(grep BACKUP_ENCRYPTION_KEY .env 2>/dev/null | cut -d= -f2 || echo "default-key-32-bytes-long-123456")
   if [ -z "$BACKUP_KEY" ] || [ "$BACKUP_KEY" = "default-key-32-bytes-long-123456" ]; then
     BACKUP_KEY=$(openssl rand -base64 32 | tr -d '\n' | cut -c1-32)
     echo "BACKUP_ENCRYPTION_KEY=$BACKUP_KEY" >> .env
-    ok "BACKUP_ENCRYPTION_KEY ساخته شد — 32 کاراکتر — امن — تاریکی روشن شد"
+    ok "BACKUP_ENCRYPTION_KEY ساخته شد — 32 کاراکتر — امن"
   fi
-  openssl enc -aes-256-cbc -salt -in $BACKUP_FILE -out $BACKUP_ENCRYPTED -k $BACKUP_KEY 2>/dev/null && ok "بکاپ encrypt شد: $BACKUP_ENCRYPTED — امن — تاریکی روشن شد" || warn "Encrypt fail — بکاپ بدون encrypt: $BACKUP_FILE"
+  openssl enc -aes-256-cbc -salt -in $BACKUP_FILE -out $BACKUP_ENCRYPTED -k $BACKUP_KEY 2>/dev/null && ok "بکاپ encrypt شد: $BACKUP_ENCRYPTED — امن" || warn "Encrypt fail — بکاپ بدون encrypt: $BACKUP_FILE"
   rm $BACKUP_FILE 2>/dev/null || true
   BACKUP_FILE=$BACKUP_ENCRYPTED
 else
-  warn "openssl نیست — بکاپ بدون encrypt: $BACKUP_FILE — ناامن — openssl نصب کن — تاریکی روشن شد"
+  warn "openssl نیست — بکاپ بدون encrypt: $BACKUP_FILE — ناامن — openssl نصب کن"
 fi
 
-# Cleanup old backups — keep last 7 — تاریکی روشن شد
-echo -e "${BLUE}  پاکسازی بکاپ قدیمی — نگه داشتن 7 آخری — تاریکی روشن شد${NC}"
+# Cleanup old backups — keep last 7
+echo -e "${BLUE}  پاکسازی بکاپ قدیمی — نگه داشتن 7 آخری${NC}"
 ls -t $BACKUP_DIR/aark-kernel-backup-*.tar.gz* 2>/dev/null | tail -n +8 | xargs rm -f 2>/dev/null || true
-ok "بکاپ قدیمی پاک شد — فقط 7 آخری نگه داشته شد — دیسک کنترل — تاریکی روشن شد"
+ok "بکاپ قدیمی پاک شد — فقط 7 آخری نگه داشته شد — دیسک کنترل"
 
-ok "بکاپ کامل شد: $BACKUP_FILE — $(du -h $BACKUP_FILE 2>/dev/null | awk '{print $1}') — امن — encrypt — با .env + کلیدها — تاریکی روشن شد"
+ok "بکاپ کامل شد: $BACKUP_FILE — $(du -h $BACKUP_FILE 2>/dev/null | awk '{print $1}') — امن — encrypt — با .env + کلیدها"
 info "برای restore: ./restore.sh $BACKUP_FILE — یا دستی: tar -xzf $BACKUP_FILE"
-info "کلید encrypt تو .env: BACKUP_ENCRYPTION_KEY — امن نگه دار — تاریکی روشن شد"
+info "کلید encrypt تو .env: BACKUP_ENCRYPTION_KEY — امن نگه دار"
 echo ""
 echo -e "${BLUE}📊 بکاپ‌ها:${NC}"
 ls -lh $BACKUP_DIR/ 2>/dev/null | tail -n 10

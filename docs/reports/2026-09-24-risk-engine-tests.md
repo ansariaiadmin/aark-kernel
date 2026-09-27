@@ -1,3 +1,11 @@
+> **Archived report.** This is a point-in-time engineering report from
+> 2026-09-24, retained for history. Its figures are superseded by
+> [`CHANGELOG.md`](../../CHANGELOG.md) and
+> [`docs/AUDIT.md`](../../docs/AUDIT.md). Do not treat the numbers here
+> as current.
+
+---
+
 # REPORT #2 — aark-kernel: Risk Engine & Exchange Integration Tests
 
 **تاریخ:** 2026-09-24

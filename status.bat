@@ -1,17 +1,17 @@
 @echo off
-echo 📊 وضعیت aark-kernel — Status v3.1.0 — تاریکی روشن شد
+echo 📊 وضعیت aark-kernel — Status v3.1.0
 echo ========================================
 docker --version
 docker compose ps
 echo.
-echo 🔑 .env — امنیت — تاریکی روشن شد
+echo 🔑 .env — امنیت
 if exist .env (
   echo ✅ .env وجود دارد
 ) else (
   echo ❌ .env نیست — install.bat بزن
 )
 echo.
-echo 🤖 پرووایدرها — تاریکی روشن شد
+echo 🤖 پرووایدرها
 echo   اگر mock — رایگان — بعداً کلید واقعی بذار
 echo   اگر ghasedak/kavenegar — هر پیامک ~120 تومان — اعتبار چک کن
 echo   اگر openai — هر درخواست ~0.01 دلار

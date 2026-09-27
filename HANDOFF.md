@@ -1,278 +1,134 @@
-# AARK Kernel - Level 5 Complete: Handoff Document
+# Engineering Handoff Notes
 
-## Project Status: ✅ ALL 5 LEVELS COMPLETE
-
-**Date:** 2026-09-04  
-**Version:** 3.3.0  
-**Environment:** Production Docker Compose
+**Version:** 3.3.0
+**Last updated:** 2026-09-27
+**Purpose:** orient the next engineer in under ten minutes
 
 ---
 
-## 🏗 What Was Built (5 Levels)
+## Read these first, in this order
 
-### Level 1: Production Hardening ✅
-- Structured JSON logging with correlation IDs (`backend/app/core/logging.py`)
-- Health checks: liveness/readiness with DB, Redis, Ollama verification (`backend/app/api/v1/health.py`)
-- Error handling middleware with correlation IDs (`backend/app/middleware/logging.py`)
-- Configuration management via Pydantic Settings (`backend/app/core/config.py`)
-- Prometheus metrics endpoint (`/api/v1/metrics`)
-- Database models & migrations (User, Trade, Position, AuditLog, MarketData, RiskMetrics)
-
-### Level 2: Advanced AI Features ✅
-- Multi-model router (Ollama, OpenAI, Anthropic, Groq) (`backend/app/agent/llm.py`)
-- Conversation memory with auto-summarization (`ConversationMemory` class)
-- Streaming responses via SSE (`/api/v1/ai/agent/evaluate/stream`)
-- Tool calling with 13 built-in tools (`backend/app/agent/tools.py`)
-- Dynamic model registration API (`/api/v1/ai/models/register`)
-
-### Level 3: Real Trading Engine ✅
-- Nobitex exchange client with full order lifecycle (`backend/app/services/trading.py`)
-- Order management: market, limit, stop, stop-limit + batch support
-- Position tracking with real-time PnL calculation
-- Portfolio manager with multi-asset balance aggregation
-- Trading API endpoints (`backend/app/api/v1/trading.py`)
-
-### Level 4: Advanced Risk Management ✅
-- Multi-method VaR (Historical, Parametric, Monte Carlo)
-- Expected Shortfall (CVaR) calculation
-- Stress testing with 6 scenarios (crash, crypto winter, flash crash, etc.)
-- Correlation analysis with HHI concentration risk
-- Dynamic position sizing with volatility targeting & risk parity
-- Comprehensive risk validation (6 metric categories)
-- Risk API endpoints (`backend/app/api/v1/risk.py`)
-
-### Level 5: Enterprise Features ✅
-- JWT authentication with bcrypt, 30-min expiry
-- RBAC (Admin, Trader, Viewer) with dependency injection
-- Audit logging for all critical operations
-- WebSocket server with subscription-based pub/sub (`backend/app/websockets/manager.py`)
-- Multi-user support with isolated vaults
-- Auth API endpoints (`backend/app/api/v1/auth.py`)
+1. [`README.md`](README.md) — what the platform does and how it is verified
+2. [`ARCHITECTURE.md`](ARCHITECTURE.md) — layers, request lifecycle, design decisions
+3. [`ROADMAP.md`](ROADMAP.md) — what is planned, with release gates
+4. [`docs/AUDIT.md`](docs/AUDIT.md) — the 45 findings that drove v3.3.0
+5. [`CHANGELOG.md`](CHANGELOG.md) — what changed and why
 
 ---
 
-## 📁 Key Files Created/Modified
+## Where the project actually stands
 
-### Backend Structure
-```
-backend/
-├── app/
-│   ├── api/v1/
-│   │   ├── __init__.py          # All routers registered
-│   │   ├── health.py            # Health checks + metrics
-│   │   ├── ai.py                # Advanced AI endpoints
-│   │   ├── trading.py           # Trading engine endpoints
-│   │   ├── risk.py              # Advanced risk endpoints
-│   │   ├── auth.py              # JWT auth + RBAC
-│   │   └── websockets/manager.py # WebSocket server
-│   ├── agent/
-│   │   ├── brain.py             # AgentBrain with memory/streaming
-│   │   ├── llm.py               # Multi-model router
-│   │   └── tools.py             # 13 tools + executor
-│   ├── risk_engine/
-│   │   ├── evaluator.py         # Legacy deterministic engine
-│   │   └── advanced.py          # VaR, stress, correlation
-│   ├── services/
-│   │   └── trading.py           # Nobitex client, managers
-│   ├── db/
-│   │   ├── session.py           # Async SQLAlchemy
-│   │   ├── models.py            # All SQLAlchemy models
-│   │   └── init_db.py           # Database initialization
-│   ├── core/
-│   │   ├── config.py            # Pydantic Settings
-│   │   ├── logging.py           # Structured JSON logging
-│   │   └── auth.py              # JWT, bcrypt, RBAC
-│   ├── middleware/
-│   │   └── logging.py           # Request logging middleware
-│   ├── websockets/
-│   │   └── manager.py           # Connection manager + pub/sub
-│   └── main.py                  # FastAPI entry point
-├── requirements.txt             # All dependencies
-├── Dockerfile                   # Multi-stage, 4 workers, healthcheck
-└── pytest.ini
-```
+Phase 0 of [`ROADMAP.md`](ROADMAP.md) is complete. The platform **builds,
+installs, and reaches its own endpoints** — which it did not before v3.3.0.
 
-### Frontend Structure
-```
-frontend/
-├── src/app/
-│   └── page.tsx                 # Full dashboard (app router)
-├── next.config.mjs              # Minimal config
-├── package.json
-├── Dockerfile                   # Fixed for app router
-└── tsconfig.json
-```
+| Dimension | State |
+|---|---|
+| Build | `next build`, `ruff`, `tsc --noEmit`, `eslint` all clean |
+| Tests | 109 passing, no external services required |
+| CI | 4/4 jobs green, including the Docker image build |
+| Endpoints | 39 live, matching the OpenAPI schema |
+| Authentication | bcrypt, JWT with 30-minute expiry, RBAC — working and tested |
+| Risk engine | Deterministic, no I/O, 25 tests |
+| Data realism | **Synthetic** — see phase 2 |
+| Agent tools | **13 stubs** — see phase 2 |
 
-### Infrastructure
-```
-docker-compose.yml               # All services with healthchecks
-README.md                        # Complete documentation
-install_and_run.sh               # Auto-installer
-```
+### The one thing to understand before changing anything
+
+The pre-v3.3.0 codebase had **parallel sources of truth**: two `AgentBrain`
+instances, two `RiskProfile` definitions, two key-vault implementations, and a
+risk implementation duplicated between the engine and the API layer. Those have
+been unified. If you find yourself about to add a second copy of something,
+stop — extend the existing one instead.
 
 ---
 
-## 🌐 Running Services
+## What was fixed in v3.3.0, in one paragraph
 
-| Service | URL | Status |
-|---------|-----|--------|
-| **Dashboard** | http://localhost:3000 | ✅ Running |
-| **Backend Health** | http://localhost:8000/api/v1/health | ✅ Healthy |
-| **Readiness** | http://localhost:8000/api/v1/health/ready | ✅ Ready |
-| **Prometheus Metrics** | http://localhost:8000/api/v1/metrics | ✅ Active |
-| **OpenAPI Schema** | http://localhost:8000/openapi.json | ✅ Available |
-
-> **Note:** `/docs` (Swagger UI) disabled in production (`DEBUG=false`). Set `DEBUG=true` in `.env` and rebuild to enable.
-
----
-
-## 🔑 API Endpoints Summary
-
-### Health & Monitoring
-- `GET /api/v1/health` - Basic health
-- `GET /api/v1/health/live` - K8s liveness probe
-- `GET /api/v1/health/ready` - K8s readiness probe
-- `GET /api/v1/metrics` - Prometheus metrics
-
-### Authentication
-- `POST /api/v1/auth/login` - JWT login
-- `POST /api/v1/auth/register` - Create user (Admin)
-- `GET /api/v1/auth/me` - Current user
-- `GET /api/v1/auth/users` - List users (Admin)
-
-### Advanced AI
-- `GET /api/v1/ai/models` - List models
-- `POST /api/v1/ai/models/register` - Register model
-- `POST /api/v1/ai/agent/chat` - Chat with tools
-- `POST /api/v1/ai/agent/evaluate/stream` - Streaming eval
-- `GET /api/v1/ai/tools` - List tools
-- `POST /api/v1/ai/tools/execute` - Execute tool
-
-### Trading Engine
-- `POST /api/v1/trading/orders` - Place order
-- `DELETE /api/v1/trading/orders/{id}` - Cancel order
-- `GET /api/v1/trading/orders` - List orders
-- `GET /api/v1/trading/portfolio/balances` - Balances
-- `GET /api/v1/trading/portfolio/positions` - Positions
-- `GET /api/v1/trading/portfolio/pnl` - PnL summary
-
-### Advanced Risk
-- `GET /api/v1/risk/var` - Calculate VaR (3 methods)
-- `POST /api/v1/risk/stress-test` - Run stress scenarios
-- `GET /api/v1/risk/correlation` - Correlation analysis
-- `POST /api/v1/risk/validate` - Full portfolio validation
-- `POST /api/v1/risk/position-size` - Dynamic sizing
-
-### WebSocket
-```
-WS /api/v1/ws/ws?token=<JWT>
-Messages: subscribe/unsubscribe to topics
-Server pushes: market_update, order_update, position_update, risk_alert, portfolio_update, agent_message, notification
-```
+`main.py` mounted only the health router, so 23 endpoints were unreachable.
+`passlib` was incompatible with `bcrypt>=4.1`, so no user could ever be
+registered. `install.sh` wrote admin credentials that nothing created, and
+`POST /auth/register` itself required an ADMIN, so a fresh install had no way
+in. The frontend never wrote the JWT it read, so the WebSocket never connected.
+`next build` failed on three errors, so no image could be built. CI had a
+31-character secret against a 32-character minimum, and the Docker job required
+a `.env` that it never created. All of it is fixed and tested; the details are in
+[`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 
-## 🚀 Next Level Up Ideas (Level 6+)
-
-### Level 6: Algorithmic Strategies
-- Strategy framework with backtesting engine
-- Built-in strategies: Grid, DCA, Mean Reversion, Momentum
-- Strategy marketplace with versioning
-- Paper trading mode
-
-### Level 7: Multi-Exchange & Cross-Chain
-- Binance, Bybit, Coinbase connectors
-- Cross-exchange arbitrage detection
-- DeFi integration (Uniswap, Aave)
-- Bridge monitoring
-
-### Level 8: Advanced ML Pipeline
-- Feature store for market data
-- Model training pipeline (retraining scheduler)
-- A/B testing framework for models
-- Explainable AI for decisions
-
-### Level 9: Institutional Features
-- Multi-tenant architecture
-- White-label deployment
-- Compliance reporting (MiFID II, etc.)
-- Advanced audit with immutable logs
-
-### Level 10: Autonomous Operations
-- Self-healing infrastructure
-- Auto-scaling based on load
-- Predictive failure detection
-- Zero-touch deployments
-
----
-
-## 🛠 Development Commands
+## Running it
 
 ```bash
-# View logs
-docker compose logs -f backend
-docker compose logs -f frontend
-
-# Restart services
-docker compose restart backend
-docker compose restart frontend
-
-# Rebuild after changes
-docker compose build backend
-docker compose build frontend
-
-# Run tests
-cd backend && pytest -v
-
-# Database shell
-docker compose exec postgres psql -U aark_admin -d aark_db
-
-# Redis shell
-docker compose exec redis redis-cli -a $REDIS_PASSWORD
-
-# Stop all
-docker compose down
-
-# Full rebuild
-docker compose down -v && docker compose up -d --build
+./install.sh          # full install, idempotent
+./start.sh            # start
+./status.sh           # status
+./logs.sh backend     # logs
+./smoke-test.sh       # full-chain smoke test
+./update.sh           # backup → pull → rebuild → health check
 ```
 
----
+```bash
+# Backend tests
+cd backend
+API_SECRET_KEY=<32+ chars> \
+DATABASE_URL=postgresql+asyncpg://test:test@localhost:5432/test \
+REDIS_URL=redis://:test@localhost:6379/0 \
+pytest tests/ -q
+```
 
-## 🔐 Security Notes
+```bash
+# Frontend verification
+cd frontend && npm run verify
+```
 
-- All secrets in `.env` (gitignored)
-- JWT secret: 32+ chars, rotate periodically
-- Database passwords auto-generated on first run
-- API keys stored in `~/.aark/nobitex.vault` (chmod 600)
-- Non-root Docker user
-- CORS restricted to configured origins
-
----
-
-## 📊 Monitoring Checklist
-
-- [ ] Prometheus scraping `/api/v1/metrics`
-- [ ] Grafana dashboards for: request latency, error rate, active connections
-- [ ] Alert on: readiness probe failures, high error rate, DB connection pool exhaustion
-- [ ] Log aggregation (Loki/ELK) for structured JSON logs
-- [ ] WebSocket connection count monitoring
+> **Keep the virtual environment outside the repository.** It is easy to commit
+> accidentally otherwise.
 
 ---
 
-## 📝 Known Issues / Technical Debt
+## Traps that have already cost time
 
-1. **Frontend Dockerfile** uses `npm start` instead of standalone output (works but larger image)
-2. **Ollama dependency** - requires local Ollama instance with `qwen2.5:7b` model
-3. **WebSocket auth** - token passed as query param (consider header-based)
-4. **Rate limiting** - not yet implemented (add via middleware)
-5. **Database migrations** - manual via `init_db.py`, consider Alembic
-6. **Tests** - only basic v2.2 tests exist, need integration tests for new endpoints
+| Trap | What happens | Avoid it by |
+|---|---|---|
+| `rewrites()` is evaluated at **build time** | a runtime `AARK_BACKEND_ORIGIN` is ignored | passing it as a build argument |
+| Scalar parameters mixed with a dict body | FastAPI binds them as query → 422 | using Pydantic request models |
+| `API_SECRET_KEY` under 32 characters | startup aborts, no test runs | using a 32+ character value |
+| `passlib` with `bcrypt>=4.1` | `ValueError` on every hash | using bcrypt directly |
+| Root `public/` directory | Next.js serves only `frontend/public` | keeping assets under `frontend/` |
+| Mocking at the HTTP boundary | broken contracts stay invisible | using `ASGITransport` and real SQLite |
+| Committing `tsconfig.tsbuildinfo` | noisy diffs after every build | it is in `.gitignore` |
 
 ---
 
-## 🤝 Handoff Complete
+## Open items, by priority
 
-The AARK Kernel v2.2.0 is production-ready with all 5 levels implemented. All containers healthy, APIs verified, dashboard rendering.
+Taken from [`ROADMAP.md`](ROADMAP.md) — the full list with acceptance criteria
+lives there.
 
-**Next session:** Start with Level 6 (Algorithmic Strategies) or any priority from the roadmap above.
+| Priority | Item | Phase |
+|---|---|---|
+| **P0 — security** | Seven business routes are unauthenticated, including `POST /nobitex/save-key` | 1.1 |
+| **P1 — security** | No rate limiting on `/auth/login` | 1.2 |
+| **P1 — correctness** | `/risk/var` and `/risk/correlation` return synthetic data | 2.1, 2.2 |
+| **P2 — product** | 13 agent tools are stubs | 2.5 |
+| **P2 — hygiene** | `paper_trader`, `notification/`, `sms/`, `robots/` are orphaned | 2.8–2.10 |
+| **P3 — operations** | No Alembic migrations | 3.1 |
+
+---
+
+## Things that are *not* broken, despite looking it
+
+| Looks wrong | Actually |
+|---|---|
+| `/risk/var` returns different numbers each call | it is Monte Carlo on synthetic data by design until phase 2 |
+| The WebSocket takes `?token=` | browsers cannot set headers on an upgrade request |
+| `env_file` is optional in Compose | deliberate, so a fresh clone can be validated |
+| `docs/API.md` looks machine-generated | it is — regenerated from OpenAPI, and a test enforces freshness |
+
+---
+
+## If you only do one thing
+
+Close **1.1** — authenticate the seven unprotected routes. It is the highest
+severity item in the project and it is a small, well-scoped change with clear
+acceptance criteria.

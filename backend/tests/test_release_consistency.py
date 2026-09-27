@@ -68,7 +68,9 @@ _CURRENT_VERSION_PATTERNS = (
 @pytest.mark.parametrize(
     "path",
     ["README.md", "ARCHITECTURE.md", "HANDOFF.md", "ROADMAP.md", "docs/API.md",
-     "SECURITY.md", "CONTRIBUTING.md", "INSTALL.md"],
+     "SECURITY.md", "CONTRIBUTING.md", "docs/INSTALLATION.md",
+     "docs/USER_GUIDE_FA.md", "docs/USER_GUIDE_EN.md", "docs/README.md",
+     "AGENTS.md", "CODE_OF_CONDUCT.md"],
 )
 def test_docs_declare_the_current_version(path):
     """A doc that *states* its version must state the real one.

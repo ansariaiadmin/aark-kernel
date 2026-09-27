@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/ansariaiadmin/aark-kernel/tree/main/docs
+    about: Start with the user guide or the installation guide before opening an issue.
+  - name: Roadmap
+    url: https://github.com/ansariaiadmin/aark-kernel/blob/main/ROADMAP.md
+    about: Check whether the work you want is already planned.
+  - name: Security vulnerability
+    url: https://github.com/ansariaiadmin/aark-kernel/security/advisories/new
+    about: Please report security issues privately — never in a public issue.

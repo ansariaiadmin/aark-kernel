@@ -1,4 +1,8 @@
-# تاریکی روشن شد — v3.1.0 — NOTIF + SMS + TELEGRAM + fallback + throttling — .env شامل همه — docker-compose env_file .env را می‌خواند — امن
+# AARK Kernel — Docker Compose stack
+# Services: backend (FastAPI), frontend (Next.js), postgres, redis.
+# Every service reads .env when present; it is optional so that a fresh
+# clone can be validated with `docker compose config` before install.sh runs.
+# Every ${VAR} referenced here is documented in .env.example — CI enforces this.
 services:
   postgres:
     image: postgres:16-alpine

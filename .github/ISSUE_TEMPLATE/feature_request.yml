@@ -1,0 +1,76 @@
+name: Feature request
+description: Propose a capability or an improvement
+title: "[Feature] "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before proposing, please check [`ROADMAP.md`](../../ROADMAP.md) — if the
+        idea is already planned, add your voice to the existing task instead of
+        opening a duplicate.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the pain, not the solution. "As a trader I cannot tell whether my portfolio is over-concentrated."
+      placeholder: "As a … I cannot …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What you would like to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you thought about, and why you rejected them.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area?
+      options:
+        - Backend API
+        - Frontend dashboard
+        - Risk engine
+        - Trading / portfolio
+        - AI agent and tools
+        - Authentication / authorisation
+        - Installation / Docker
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Which roadmap phase does this belong to?
+      description: See ROADMAP.md. "Not sure" is a fine answer.
+      options:
+        - Phase 1 — security and documentation (v3.4.0)
+        - Phase 2 — real data and agent (v3.5.0)
+        - Phase 3 — product maturity (v4.0.0)
+        - Not sure
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to implement this and open a pull request
+          required: false
+        - label: I have read CONTRIBUTING.md and accept the quality gates
+          required: false

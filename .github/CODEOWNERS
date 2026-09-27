@@ -1,0 +1,24 @@
+# Code owners
+#
+# Every change requires a review from one of these owners.
+# Paths are matched with gitignore-style patterns.
+
+# Default owner for everything not matched below.
+*                       @ansariaiadmin
+
+# Security-sensitive surfaces need an explicit owner review.
+/.github/               @ansariaiadmin
+/SECURITY.md            @ansariaiadmin
+/backend/app/core/auth.py    @ansariaiadmin
+/backend/app/core/vault.py   @ansariaiadmin
+/backend/app/core/config.py  @ansariaiadmin
+/backend/app/db/            @ansariaiadmin
+/docker-compose.yml         @ansariaiadmin
+/backend/Dockerfile         @ansariaiadmin
+/frontend/Dockerfile        @ansariaiadmin
+/install.sh                 @ansariaiadmin
+/update.sh                  @ansariaiadmin
+/backup.sh                  @ansariaiadmin
+
+# Generated artifacts — do not hand-edit.
+/docs/API.md          @ansariaiadmin
