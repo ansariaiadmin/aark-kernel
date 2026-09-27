@@ -1,0 +1,50 @@
+# Pre-commit hooks — run before every commit so problems never reach CI.
+#
+# Install once:
+#   pip install pre-commit && pre-commit install
+#
+# Run manually on everything:
+#   pre-commit run --all-files
+
+repos:
+  # ---- generic hygiene ----
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '^docs-site/'
+      - id: end-of-file-fixer
+        exclude: '^frontend/public/.*\.png$'
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: detect-private-key
+
+  # ---- secrets ----
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.3
+    hooks:
+      - id: gitleaks
+
+  # ---- python ----
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.10
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/
+
+  # ---- shell ----
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        files: '\.(sh|bash)$'
