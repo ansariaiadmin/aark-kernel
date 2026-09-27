@@ -12,10 +12,39 @@ from starlette.types import ASGIApp
 logger = logging.getLogger(__name__)
 
 
+#: Probe/doc paths that must never be logged — they are hit by the Docker
+#: HEALTHCHECK and by Kubernetes every few seconds.
+#:
+#: These used to be written as ``/health``, ``/metrics``, ... but the real
+#: routes live under ``API_V1_PREFIX`` (``/api/v1/health/live``), so the set
+#: never matched and *every single* liveness/readiness/metrics scrape produced
+#: two INFO log lines. Both the bare and the prefixed spellings are listed so
+#: the middleware also works if the prefix changes.
+_NOISE_PATHS = (
+    "/health",
+    "/health/live",
+    "/health/ready",
+    "/metrics",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
+)
+
+
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, excluded_paths: set | None = None):
         super().__init__(app)
-        self.excluded_paths = excluded_paths or {"/health", "/health/live", "/health/ready", "/metrics", "/docs", "/openapi.json", "/redoc"}
+        if excluded_paths is None:
+            try:
+                from app.core.config import get_settings
+
+                prefix = get_settings().API_V1_PREFIX.rstrip("/")
+            except Exception:  # noqa: BLE001 - config not ready; fall back to bare paths
+                prefix = ""
+            excluded_paths = set(_NOISE_PATHS)
+            if prefix:
+                excluded_paths |= {f"{prefix}{p}" for p in _NOISE_PATHS}
+        self.excluded_paths = excluded_paths
 
     async def dispatch(self, request: Request, call_next):
         if request.url.path in self.excluded_paths:

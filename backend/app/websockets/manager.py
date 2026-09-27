@@ -69,8 +69,14 @@ class ConnectionManager:
             await self.send_personal_message(user_id, message)
 
     async def broadcast_to_subscription(self, topic: str, message: dict[str, Any]):
+        # Iterate over a *snapshot*. `disconnect()` mutates
+        # `self.connection_metadata`, so iterating the live dict raised
+        # "RuntimeError: dictionary changed size during iteration" the first
+        # time a dead socket was pruned mid-broadcast — killing the whole
+        # publish for every other subscriber.
         message["topic"] = topic
-        for websocket, metadata in self.connection_metadata.items():
+        snapshot = list(self.connection_metadata.items())
+        for websocket, metadata in snapshot:
             if topic in metadata["subscriptions"]:
                 try:
                     await websocket.send_json(message)
@@ -109,6 +115,10 @@ class ConnectionManager:
 manager = ConnectionManager(max_connections=settings.WS_MAX_CONNECTIONS)
 
 
+class WebSocketAuthError(Exception):
+    """Raised when a WebSocket handshake cannot be authenticated."""
+
+
 async def get_websocket_user(
     websocket: WebSocket,
     token: str = Query(...),
@@ -120,20 +130,19 @@ async def get_websocket_user(
     try:
         payload = jwt.decode(token, settings.API_SECRET_KEY, algorithms=["HS256"])
         user_id = int(payload.get("sub", 0))
-    except (JWTError, ValueError):
-        await websocket.close(code=1008, reason="Invalid token")
-        raise
+    except (JWTError, ValueError, TypeError) as exc:
+        raise WebSocketAuthError("Invalid token") from exc
 
+    user: User | None = None
     async for session in get_async_session():
         user = await get_user_by_id(session, user_id)
-        if not user or not user.is_active:
-            await websocket.close(code=1008, reason="User not found or inactive")
-            raise RuntimeError("User not found or inactive")
+        break
 
-        return user
-
-    await websocket.close(code=1008, reason="Database error")
-    raise RuntimeError("Database error")
+    if user is None:
+        raise WebSocketAuthError("Database error")
+    if not user.is_active:
+        raise WebSocketAuthError("User not found or inactive")
+    return user
 
 
 @router.websocket("/ws")
@@ -141,7 +150,20 @@ async def websocket_endpoint(
     websocket: WebSocket,
     token: str = Query(...),
 ):
-    user = await get_websocket_user(websocket, token)
+    # Authenticate *before* accepting, and translate failures into a clean
+    # 1008 close. Previously the raw RuntimeError escaped the endpoint (it was
+    # raised above the try/finally), leaving an unhandled server-side error for
+    # every bad/expired token.
+    try:
+        user = await get_websocket_user(websocket, token)
+    except WebSocketAuthError as exc:
+        try:
+            await websocket.close(code=1008, reason=str(exc))
+        except Exception:  # noqa: BLE001 - socket may already be gone
+            pass
+        logger.warning("WebSocket handshake rejected: %s", exc)
+        return
+
     connected = await manager.connect(websocket, user.id, {"email": user.email, "role": user.role.value})
     if not connected:
         return

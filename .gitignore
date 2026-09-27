@@ -1,10 +1,44 @@
+# --- dependencies ---
 node_modules/
+.venv/
+venv/
+env/
+
+# --- secrets: never commit real config ---
 .env
 .env.*
+!.env.example
+*.vault
+
+# --- build output ---
 dist/
 build/
 .next/
+out/
+frontend/.next/
+# TypeScript incremental build cache — machine-specific, caused noisy diffs.
+*.tsbuildinfo
+
+# --- runtime state ---
+runtime/
+backups/
+logs/
+*.sqlite
+*.sqlite3
+
+# --- logs ---
 *.log
+
+# --- python ---
 __pycache__/
-.venv/
-venv/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- editor / OS ---
+.DS_Store
+.idea/
+.vscode/

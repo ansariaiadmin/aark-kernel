@@ -3,10 +3,13 @@ import sys
 from datetime import datetime, timezone
 from typing import Any
 
-from pythonjsonlogger import jsonlogger
+try:  # python-json-logger >= 3
+    from pythonjsonlogger.json import JsonFormatter as _JsonFormatter
+except ImportError:  # python-json-logger 2.x (deprecated module path)
+    from pythonjsonlogger.jsonlogger import JsonFormatter as _JsonFormatter
 
 
-class CustomJsonFormatter(jsonlogger.JsonFormatter):
+class CustomJsonFormatter(_JsonFormatter):
     def add_fields(self, log_record: dict[str, Any], record: logging.LogRecord, message_dict: dict[str, Any]) -> None:
         super().add_fields(log_record, record, message_dict)
         log_record["timestamp"] = datetime.now(timezone.utc).isoformat() + "Z"

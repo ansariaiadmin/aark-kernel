@@ -4,15 +4,18 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
-from app.agent.brain import AgentBrain
 from app.agent.llm import ModelConfig, ModelProvider, model_router
 from app.agent.tools import ToolExecutor, get_all_tools
+from app.core.agent import brain
 from app.core.config import get_settings
 
 router = APIRouter(tags=["Advanced AI"])
 settings = get_settings()
 
-brain = AgentBrain()
+# `brain` is the process-wide singleton from app.core.agent. This module used to
+# construct its own AgentBrain(), which produced a *second* conversation memory
+# and re-registered the default model — so `/api/v1/agent/*` (main.py) and
+# `/api/v1/ai/agent/*` (here) never shared state.
 
 
 class ModelRegisterRequest(BaseModel):

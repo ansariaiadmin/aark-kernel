@@ -1,11 +1,19 @@
-# تاریکی روشن شد — v3.1.0 — NOTIF + SMS + TELEGRAM + fallback + throttling — .env شامل همه — docker-compose env_file .env را می‌خواند — امن
+# AARK Kernel — Docker Compose stack
+# Services: backend (FastAPI), frontend (Next.js), postgres, redis.
+# Every service reads .env when present; it is optional so that a fresh
+# clone can be validated with `docker compose config` before install.sh runs.
+# Every ${VAR} referenced here is documented in .env.example — CI enforces this.
 services:
   postgres:
     image: postgres:16-alpine
     container_name: aark-postgres
     restart: unless-stopped
     env_file:
-      - .env
+      # Optional: a fresh clone has no .env yet. Every value the app
+      # needs is also declared in `environment:` below with a default,
+      # so `docker compose config` works before install.sh runs.
+      - path: .env
+        required: false
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -23,7 +31,11 @@ services:
     container_name: aark-redis
     restart: unless-stopped
     env_file:
-      - .env
+      # Optional: a fresh clone has no .env yet. Every value the app
+      # needs is also declared in `environment:` below with a default,
+      # so `docker compose config` works before install.sh runs.
+      - path: .env
+        required: false
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     volumes:
       - redisdata:/data
@@ -45,7 +57,11 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - .env
+      # Optional: a fresh clone has no .env yet. Every value the app
+      # needs is also declared in `environment:` below with a default,
+      # so `docker compose config` works before install.sh runs.
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
@@ -54,6 +70,15 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-json}
       ENVIRONMENT: production
+      # Creates the first admin on boot (app/db/init_db.py::bootstrap_admin).
+      # Without this, POST /auth/register needed an admin that could never exist.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      AARK_VAULT_DIR: ${AARK_VAULT_DIR:-/home/appuser/.aark}
+    volumes:
+      # The exchange API key lives in a 0600 file outside the database
+      # (app/core/vault.py). Without a volume it was lost on every restart.
+      - vaultdata:/home/appuser/.aark
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -69,15 +94,26 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # next.config.mjs serialises rewrites() at BUILD time, so the API proxy
+        # target has to be a build arg, not a runtime environment variable.
+        AARK_BACKEND_ORIGIN: http://backend:8000
+        NEXT_PUBLIC_API_URL: ""
     container_name: aark-frontend
     restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
     env_file:
-      - .env
+      # Optional: a fresh clone has no .env yet. Every value the app
+      # needs is also declared in `environment:` below with a default,
+      # so `docker compose config` works before install.sh runs.
+      - path: .env
+        required: false
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:${AARK_BACKEND_PORT:-8000}/api/v1
+      # Browser stays same-origin; the Next server proxies /api/v1/* to the
+      # backend over the compose network (no CORS, no localhost in the client).
+      NODE_ENV: production
     ports:
       - "127.0.0.1:${AARK_FRONTEND_PORT:-3000}:3000"
     healthcheck:
@@ -90,3 +126,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  vaultdata:

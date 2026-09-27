@@ -455,28 +455,18 @@ class AdvancedRiskEngine:
         }
 
 
-# Backward compatibility with existing DeterministicRiskEngine
-class DeterministicRiskEngine:
-    @staticmethod
-    def validate_order(profile, current_balance_irt: float, requested_amount_irt: float) -> tuple[bool, str]:
-        if requested_amount_irt < 0:
-            return False, "REJECTED: Amount cannot be negative."
+# ---------------------------------------------------------------------------
+# DeterministicRiskEngine / RiskProfile used to be *duplicated* here as a
+# "backward compatibility" copy while `app.main` imported the originals from
+# `app.risk_engine.evaluator`. Two definitions of the same risk limits means
+# the agent path and the API path can silently disagree.
+# `evaluator` is now the single source of truth; re-export for compatibility.
+# ---------------------------------------------------------------------------
+from app.risk_engine.evaluator import DeterministicRiskEngine, RiskProfile  # noqa: E402
 
-        if current_balance_irt > profile.max_portfolio_allocation_irt:
-            return False, f"REJECTED: Wallet balance ({current_balance_irt:,.0f} IRT) exceeds hard ceiling limit of {profile.max_portfolio_allocation_irt:,.0f} IRT."
-
-        if requested_amount_irt > current_balance_irt:
-            return False, f"REJECTED: Requested amount ({requested_amount_irt:,.0f} IRT) exceeds available balance ({current_balance_irt:,.0f} IRT)."
-
-        max_allowed_single_order = current_balance_irt * profile.max_single_trade_pct
-        if requested_amount_irt > max_allowed_single_order:
-            return False, f"REJECTED: Requested amount ({requested_amount_irt:,.0f} IRT) exceeds single-order risk boundary of 20% ({max_allowed_single_order:,.0f} IRT)."
-
-        return True, f"APPROVED: Order of {requested_amount_irt:,.0f} IRT is fully compliant with dynamic risk boundaries."
-
-
-@dataclass(frozen=True)
-class RiskProfile:
-    max_portfolio_allocation_irt: float = 10_000_000.0
-    max_single_trade_pct: float = 0.20
-    max_daily_loss_pct: float = 0.015
+__all__ = [
+    "AdvancedRiskEngine",
+    "DeterministicRiskEngine",
+    "RiskLevel",
+    "RiskProfile",
+]

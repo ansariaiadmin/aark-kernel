@@ -121,6 +121,37 @@ class NobitexClient:
         response.raise_for_status()
         return response.json()
 
+    async def get_price(self, symbol: str) -> Decimal:
+        """Best-effort last traded price for ``symbol`` (e.g. ``BTCIRT``).
+
+        ``/market/stats`` answers either as a flat object or wrapped in a
+        ``stats`` key depending on the endpoint version, and the field names
+        vary (``lastPrice``/``latest``/``bestBuy``). This normalises all of
+        them so callers never have to guess.
+
+        Returns ``Decimal(0)`` when the market reports nothing usable.
+        """
+        try:
+            payload = await self.get_ticker(symbol)
+        except (httpx.HTTPError, ValueError) as exc:
+            logger.warning("get_price(%s) failed: %s", symbol, exc)
+            return Decimal(0)
+
+        stats = payload.get("stats", payload) if isinstance(payload, dict) else {}
+        if not isinstance(stats, dict):
+            return Decimal(0)
+        for field in ("lastPrice", "latest", "bestBuy", "bestSell", "closingPrice"):
+            raw = stats.get(field)
+            if raw in (None, "", 0, "0"):
+                continue
+            try:
+                price = Decimal(str(raw))
+            except (ArithmeticError, ValueError):
+                continue
+            if price > 0:
+                return price
+        return Decimal(0)
+
     async def get_orderbook(self, symbol: str, depth: int = 20) -> dict[str, Any]:
         src = symbol[:-4]
         dst = symbol[-4:]

@@ -1,0 +1,109 @@
+version: 2
+
+updates:
+  # Python dependencies (backend)
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Amsterdam
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - backend
+    commit-message:
+      prefix: "build"
+      include: scope
+    groups:
+      # Batch low-risk patch updates to reduce review noise.
+      python-patch:
+        patterns:
+          - "*"
+        update-types:
+          - patch
+      # Security-relevant packages are updated individually.
+      python-security:
+        patterns:
+          - "fastapi"
+          - "starlette"
+          - "uvicorn"
+          - "pydantic"
+          - "sqlalchemy"
+          - "bcrypt"
+          - "pyjwt"
+          - "cryptography"
+          - "httpx"
+          - "aiohttp"
+        update-types:
+          - minor
+          - patch
+
+  # Node dependencies (frontend)
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Amsterdam
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - frontend
+    commit-message:
+      prefix: "build"
+      include: scope
+    groups:
+      node-patch:
+        patterns:
+          - "*"
+        update-types:
+          - patch
+      node-security:
+        patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+        update-types:
+          - minor
+          - patch
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      timezone: Europe/Amsterdam
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "ci"
+      include: scope
+
+  # Docker base images
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: monthly
+      timezone: Europe/Amsterdam
+    labels:
+      - dependencies
+      - docker
+    commit-message:
+      prefix: "build"
+      include: scope
+
+  - package-ecosystem: docker
+    directory: /frontend
+    schedule:
+      interval: monthly
+      timezone: Europe/Amsterdam
+    labels:
+      - dependencies
+      - docker
+    commit-message:
+      prefix: "build"
+      include: scope

@@ -2,22 +2,41 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import bcrypt
 from app.core.config import get_settings
 from app.db.models import AuditLog, User, UserRole
 from app.db.session import get_async_session
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/login")
+
+# ---------------------------------------------------------------------------
+# Password hashing.
+#
+# This module used passlib's CryptContext(schemes=["bcrypt"]). passlib 1.7.4
+# probes `bcrypt.__about__.__version__` (removed in bcrypt>=4.1) and then runs a
+# >72-byte "wraparound bug" detection hash. bcrypt>=4.1 *raises* on that input
+# instead of truncating, so every single call to get_password_hash() blew up
+# with:
+#     ValueError: password cannot be longer than 72 bytes
+# i.e. /auth/register always 500'd and no user could ever be created.
+# passlib is unmaintained (last release 2020); we call bcrypt directly. The
+# hash format ($2b$) is unchanged, so any hashes created before this fix still
+# verify.
+# ---------------------------------------------------------------------------
+BCRYPT_ROUNDS = 12
+BCRYPT_MAX_BYTES = 72
+
+#: Single source of truth for the JWT lifetime (documented as 30 minutes).
+ACCESS_TOKEN_TTL_MINUTES = 30
 
 
 class Token(BaseModel):
@@ -49,8 +68,7 @@ class UserResponse(BaseModel):
     created_at: datetime
     last_login: datetime | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserUpdate(BaseModel):
@@ -59,20 +77,45 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
 
 
+def _normalize_secret(plain_password: str) -> bytes:
+    """UTF-8 encode and clamp to bcrypt's 72-byte block.
+
+    bcrypt silently ignores everything past byte 72; bcrypt>=4.1 raises
+    instead. Truncating explicitly keeps behaviour deterministic across
+    versions. UTF-8 is used (not latin-1) so multi-byte passwords are handled
+    consistently.
+    """
+    return plain_password.encode("utf-8")[:BCRYPT_MAX_BYTES]
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    if not hashed_password:
+        return False
+    try:
+        return bcrypt.checkpw(_normalize_secret(plain_password), hashed_password.encode("utf-8"))
+    except (ValueError, TypeError) as exc:
+        # Malformed/unusable stored hash — never crash the login path.
+        logger.warning("Password verification failed against stored hash: %s", exc)
+        return False
 
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(
+        _normalize_secret(password),
+        bcrypt.gensalt(rounds=BCRYPT_ROUNDS),
+    ).decode("utf-8")
 
 
 def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
+    now = datetime.now(timezone.utc)
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = now + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=30)
+        expire = now + timedelta(minutes=ACCESS_TOKEN_TTL_MINUTES)
+    # `iat` was missing, so a stolen token's age could not be determined and
+    # rotation/revocation windows had nothing to anchor on.
+    to_encode.setdefault("iat", now)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.API_SECRET_KEY, algorithm="HS256")
     return encoded_jwt
@@ -108,14 +151,20 @@ async def get_current_user(
     )
     try:
         payload = jwt.decode(token, settings.API_SECRET_KEY, algorithms=["HS256"])
-        user_id: int = payload.get("sub")
-        if user_id is None:
+        raw_sub = payload.get("sub")
+        if raw_sub is None:
             raise credentials_exception
-        token_data = TokenData(sub=str(user_id), role=payload.get("role"), permissions=payload.get("permissions", []))
-    except JWTError:
-        raise credentials_exception
+        # `sub` is issued as str(user.id) — coerce back to int before hitting
+        # the integer primary key, otherwise the DB driver rejects the lookup.
+        user_id = int(raw_sub)
+    except (JWTError, ValueError, TypeError):
+        raise credentials_exception from None
 
-    user = await get_user_by_id(db, token_data.sub)
+    # TokenData is validated here so a malformed `role`/`permissions` claim is
+    # rejected before it reaches any authorisation decision.
+    TokenData(sub=str(user_id), role=payload.get("role"), permissions=payload.get("permissions", []))
+
+    user = await get_user_by_id(db, user_id)
     if user is None:
         raise credentials_exception
     return user

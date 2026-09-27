@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" class="lang-fa">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AARK Kernel — پلتفرم ترید و مدیریت ریسک</title>
+<meta name="description" content="پلتفرم خودمیزبان ترید و مدیریت ریسک: دادهٔ بازار زنده، تحلیل VaR/CVaR، پایش پورتفولیو، احراز هویت JWT و RBAC، WebSocket بلادرنگ و گاوصندوق امن کلید. ساخته‌شده با FastAPI و Next.js.">
+<meta name="author" content="AARK Kernel">
+<meta name="theme-color" content="#0b0e14">
+
+<!-- Open Graph / social preview -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AARK Kernel">
+<meta property="og:title" content="AARK Kernel — Trading &amp; Risk Platform">
+<meta property="og:description" content="Self-hosted trading and risk platform: real-time market data, VaR/CVaR analytics, portfolio monitoring, JWT+RBAC auth, WebSocket streaming, secure key vault.">
+<meta property="og:image" content="assets/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="AARK Kernel — Trading &amp; Risk Platform">
+<meta name="twitter:description" content="Self-hosted trading and risk platform: real-time market data, VaR/CVaR analytics, portfolio monitoring, JWT+RBAC auth, WebSocket streaming, secure key vault.">
+<meta name="twitter:image" content="assets/icon-512.png">
+
+<link rel="icon" type="image/png" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body class="lang-fa">
+
+<script>
+/* Decide the language before the first paint: a stored preference wins,
+   otherwise the browser language decides. Persian-speaking visitors get the
+   RTL Persian page; everyone else — including international reviewers and
+   investors — lands on the English LTR page. This runs inline so the page
+   never flashes the wrong direction. */
+(function () {
+  "use strict";
+  var lang = null;
+  try { lang = localStorage.getItem("aark-lang"); } catch (e) { /* private mode */ }
+  if (lang !== "fa" && lang !== "en") {
+    var nav = (navigator.language || navigator.userLanguage || "en").toLowerCase();
+    lang = nav.indexOf("fa") === 0 ? "fa" : "en";
+  }
+  var en = lang === "en";
+  var html = document.documentElement;
+  html.setAttribute("lang", en ? "en" : "fa");
+  html.setAttribute("dir", en ? "ltr" : "rtl");
+  html.className = en ? "lang-en" : "lang-fa";
+  document.body.className = en ? "lang-en" : "lang-fa";
+})();
+</script>
+
+<!-- ══════════════════ NAV ══════════════════ -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#top">
+      <img src="assets/icon-192.png" alt="AARK Kernel logo" width="34" height="34">
+      <span>AARK&nbsp;Kernel</span>
+    </a>
+    <div class="nav-links" id="navLinks">
+      <a href="#what" data-fa>قابلیت‌ها</a>
+      <a href="#what" data-en>Capabilities</a>
+      <a href="#status" data-fa>وضعیت واقعی</a>
+      <a href="#status" data-en>Status</a>
+      <a href="#arch" data-fa>معماری</a>
+      <a href="#arch" data-en>Architecture</a>
+      <a href="#install" data-fa>نصب</a>
+      <a href="#install" data-en>Install</a>
+      <a href="#roadmap" data-fa>نقشهٔ راه</a>
+      <a href="#roadmap" data-en>Roadmap</a>
+      <a href="#faq" data-fa>پرسش‌ها</a>
+      <a href="#faq" data-en>FAQ</a>
+    </div>
+    <div class="nav-actions">
+      <button class="lang-btn" id="langBtn" type="button" aria-label="Switch language">EN</button>
+      <button class="nav-toggle" id="navToggle" type="button" aria-label="Menu" aria-expanded="false">☰</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════ HERO ══════════════════ -->
+<header class="hero" id="top">
+  <div class="wrap hero-inner">
+    <div>
+      <span class="eyebrow" data-fa>نسخهٔ ۳.۳.۰ · فاز ۰ بسته شد</span>
+      <span class="eyebrow" data-en>Version 3.3.0 · Phase 0 complete</span>
+
+      <h1 data-fa>ترید و مدیریت ریسک،<br><span class="accent">روی سرور خودتان</span></h1>
+      <h1 data-en>Trading and risk management,<br><span class="accent">on your own server</span></h1>
+
+      <p class="lede" data-fa>
+        داشبورد زندهٔ بازار، موتور کمی ریسک با سه روش مستقل، پایش پورتفولیو و
+        گاوصندوق امن برای کلید صرافی — با احراز هویت JWT و کنترل دسترسی نقش‌محور.
+      </p>
+      <p class="lede" data-en>
+        A live market dashboard, a quantitative risk engine with three independent
+        methods, portfolio monitoring, and a secure vault for exchange keys — with
+        JWT authentication and role-based access control.
+      </p>
+
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#install" data-fa>شروع در ۳ قدم</a>
+        <a class="btn btn-primary" href="#install" data-en>Get started in 3 steps</a>
+        <a class="btn btn-ghost" href="https://github.com/ansariaiadmin/aark-kernel" data-fa>مخزن گیت‌هاب</a>
+        <a class="btn btn-ghost" href="https://github.com/ansariaiadmin/aark-kernel" data-en>GitHub repository</a>
+      </div>
+
+      <div class="hero-stats">
+        <div class="stat"><b>39</b><span data-fa>اندپوینت زنده</span><span data-en>Live endpoints</span></div>
+        <div class="stat"><b>114</b><span data-fa>تست خودکار</span><span data-en>Automated tests</span></div>
+        <div class="stat"><b>4/4</b><span data-fa>job سبز CI</span><span data-en>CI jobs green</span></div>
+        <div class="stat"><b>MIT</b><span data-fa>مجوز باز</span><span data-en>Open licence</span></div>
+      </div>
+    </div>
+
+    <div class="terminal" aria-label="Installation terminal">
+      <div class="terminal-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span>install.sh</span>
+      </div>
+      <pre><code><span class="c">$ git clone https://github.com/ansariaiadmin/aark-kernel.git</span>
+<span class="c">$ cd aark-kernel</span>
+<span class="c">$ chmod +x install.sh &amp;&amp; ./install.sh</span>
+
+<span class="y">🧙 AARK Kernel installer — v3.3.0</span>
+
+[1/9] 🔍 <span class="b">system · disk · ports</span>      <span class="g">✅ all free</span>
+[2/9] 🐳 <span class="b">docker check</span>               <span class="g">✅ 27.3.1</span>
+[3/9] 📧 <span class="b">admin email</span>                admin@aark-kernel.dev
+[4/9] 🔑 <span class="b">admin password</span>             <span class="g">✅ 12+ chars</span>
+[5/9] ⚙️  <span class="b">generate .env</span>              <span class="g">✅ 32-char secrets</span>
+[6/9] 🚀 <span class="b">compose up --build</span>          <span class="g">✅ 4 services</span>
+[7/9] 🗄️  <span class="b">init db + bootstrap admin</span>  <span class="g">✅ created</span>
+[8/9] 🩺 <span class="b">health check</span>                <span class="g">✅ alive</span>
+[9/9] 📚 <span class="b">documentation</span>              <span class="g">✅ ready</span>
+
+<span class="g">✔ Installation complete.</span>
+<span class="b">→ http://localhost:3000</span></code></pre>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════════ WHAT IT DOES ══════════════════ -->
+<section id="what">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow" data-fa>قابلیت‌ها</span>
+      <span class="eyebrow" data-en>Capabilities</span>
+      <h2 data-fa>سه چیزی که این پلتفرم خوب انجام می‌دهد</h2>
+      <h2 data-en>Three things this platform does well</h2>
+      <p data-fa>هر ادعای این صفحه یا پشتش یک تست خودکار است، یا یک دستوری که خودتان می‌توانید اجرا کنید.</p>
+      <p data-en>Every claim on this page is backed either by an automated test or by a command you can run yourself.</p>
+    </div>
+
+    <div class="grid grid-3">
+      <div class="card">
+        <div class="ico">📊</div>
+        <h3 data-fa>موتور ریسک کمی</h3>
+        <h3 data-en>Quantitative risk engine</h3>
+        <p data-fa>محاسبهٔ Value-at-Risk با سه روش مستقل — تاریخی، پارامتریک و مونت‌کارلو — به‌همراه Expected Shortfall، شش سناریوی استرس، تحلیل همبستگی، شاخص تمرکز HHI و سایزپوزیشن پویا.</p>
+        <p data-en>Value-at-Risk via three independent methods — historical, parametric and Monte Carlo — plus Expected Shortfall, six stress scenarios, correlation analysis, the HHI concentration index, and dynamic position sizing.</p>
+      </div>
+      <div class="card">
+        <div class="ico">📡</div>
+        <h3 data-fa>داده و پایش زنده</h3>
+        <h3 data-en>Live data and monitoring</h3>
+        <p data-fa>یکپارچگی با صرافی نوبیتکس: چرخهٔ کامل سفارش، موجودی‌ها، پوزیشن‌ها و قیمت لحظه‌ای. جریان داده از طریق WebSocket با احراز هویت توکن و اشتراک موضوعی.</p>
+        <p data-en>Nobitex exchange integration: full order lifecycle, balances, positions and live prices. Data streams over an authenticated WebSocket with topic subscriptions.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🔐</div>
+        <h3 data-fa>امنیت و دسترسی</h3>
+        <h3 data-en>Security and access control</h3>
+        <p data-fa>هش bcrypt با cost 12، توکن JWT با انقضای ۳۰ دقیقه، سه نقش Admin/Trader/Viewer، و گاوصندوق جدا برای کلید صرافی با مجوز ۰۶۰۰ که هرگز در دیتابیس ذخیره نمی‌شود.</p>
+        <p data-en>bcrypt hashing at cost 12, JWT tokens with a 30-minute lifetime, three roles (Admin/Trader/Viewer), and an isolated vault for exchange keys at mode 0600 that is never stored in the database.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ STATUS ══════════════════ -->
+<section id="status">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow" data-fa>وضعیت واقعی</span>
+      <span class="eyebrow" data-en>Honest status</span>
+      <h2 data-fa>چه چیزی کار می‌کند، و چه چیزی در راه است</h2>
+      <h2 data-en>What works, and what is still coming</h2>
+      <p data-fa>این بخش عمداً اول آمده. در نسخهٔ ۳.۳.۰ کل مستندات بازنویسی شد، چون نسخهٔ قبلی چیزهایی را ادعا می‌کرد که در کد وجود نداشت. یک شکاف مستندشده بهتر از یک شکاف پنهان است.</p>
+      <p data-en>This section comes first deliberately. In v3.3.0 the entire documentation was rewritten, because the previous version claimed things the code did not support. A documented gap beats a hidden one.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-fa>قابلیت</th><th data-en>Capability</th>
+            <th data-fa>وضعیت</th><th data-en>Status</th>
+            <th data-fa>شاهد</th><th data-en>Evidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-fa>احراز هویت: bcrypt، JWT، RBAC، audit log</td>
+            <td data-en>Authentication: bcrypt, JWT, RBAC, audit log</td>
+            <td><span class="pill ok" data-fa>کار می‌کند</span><span class="pill ok" data-en>Working</span></td>
+            <td><code>test_api_wiring.py</code></td>
+          </tr>
+          <tr>
+            <td data-fa>موتور ریسک: VaR سه روش، CVaR، استرس، همبستگی، HHI، سایزپوزیشن</td>
+            <td data-en>Risk engine: 3-method VaR, CVaR, stress, correlation, HHI, sizing</td>
+            <td><span class="pill ok" data-fa>کار می‌کند</span><span class="pill ok" data-en>Working</span></td>
+            <td><code>test_risk_engine.py</code></td>
+          </tr>
+          <tr>
+            <td data-fa>معاملات آزمایشی: slippage، limit/stop، PnL، توازن‌سازی</td>
+            <td data-en>Paper trading: slippage, limit/stop, PnL, rebalancing</td>
+            <td><span class="pill ok" data-fa>کار می‌کند</span><span class="pill ok" data-en>Working</span></td>
+            <td><code>test_nobitex_paper_trading.py</code></td>
+          </tr>
+          <tr>
+            <td data-fa>اعتبارسنجی backtest آماری: آزمون Kupiec POF</td>
+            <td data-en>Statistical backtest validation: Kupiec POF test</td>
+            <td><span class="pill ok" data-fa>کار می‌کند</span><span class="pill ok" data-en>Working</span></td>
+            <td><code>test_var_backtest.py</code></td>
+          </tr>
+          <tr>
+            <td data-fa>WebSocket بلادرنگ با احراز هویت و pub/sub</td>
+            <td data-en>Real-time WebSocket with auth and pub/sub</td>
+            <td><span class="pill ok" data-fa>کار می‌کند</span><span class="pill ok" data-en>Working</span></td>
+            <td><code>websockets/manager.py</code></td>
+          </tr>
+          <tr>
+            <td data-fa>گاوصندوق کلید: پوشهٔ ۰۷۰۰، فایل ۰۶۰۰، نوشتن اتمیک</td>
+            <td data-en>Key vault: 0700 directory, 0600 file, atomic write</td>
+            <td><span class="pill ok" data-fa>کار می‌کند</span><span class="pill ok" data-en>Working</span></td>
+            <td><code>core/vault.py</code></td>
+          </tr>
+          <tr>
+            <td data-fa>داشبورد Next.js: ورود، تب‌ها، Kill Switch، نمودار</td>
+            <td data-en>Next.js dashboard: login, tabs, kill switch, charts</td>
+            <td><span class="pill ok" data-fa>کار می‌کند</span><span class="pill ok" data-en>Working</span></td>
+            <td><code>next build</code></td>
+          </tr>
+          <tr>
+            <td data-fa>۷ مسیر تجاری بدون احراز هویت</td>
+            <td data-en>Seven business routes without authentication</td>
+            <td><span class="pill risk" data-fa>باز · امنیتی</span><span class="pill risk" data-en>Open · security</span></td>
+            <td data-fa>فاز ۱</td><td data-en>Phase 1</td>
+          </tr>
+          <tr>
+            <td data-fa>محدودسازی نرخ روی ورود</td>
+            <td data-en>Rate limiting on login</td>
+            <td><span class="pill wip" data-fa>در راه</span><span class="pill wip" data-en>Planned</span></td>
+            <td data-fa>فاز ۱</td><td data-en>Phase 1</td>
+          </tr>
+          <tr>
+            <td data-fa>دادهٔ بازار واقعی برای VaR و همبستگی</td>
+            <td data-en>Real market data for VaR and correlation</td>
+            <td><span class="pill wip" data-fa>دادهٔ مصنوعی</span><span class="pill wip" data-en>Synthetic data</span></td>
+            <td data-fa>فاز ۲</td><td data-en>Phase 2</td>
+          </tr>
+          <tr>
+            <td data-fa>۱۳ ابزار ایجنت هنوز stub هستند</td>
+            <td data-en>13 agent tools are still stubs</td>
+            <td><span class="pill wip" data-fa>در راه</span><span class="pill wip" data-en>Planned</span></td>
+            <td data-fa>فاز ۲</td><td data-en>Phase 2</td>
+          </tr>
+          <tr>
+            <td data-fa>مهاجرت دیتابیس (Alembic)</td>
+            <td data-en>Database migrations (Alembic)</td>
+            <td><span class="pill todo" data-fa>دستی</span><span class="pill todo" data-en>Manual</span></td>
+            <td data-fa>فاز ۳</td><td data-en>Phase 3</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <span class="ci">⚠️</span>
+      <p data-fa><b>یادداشت استقرار:</b> تا بسته‌شدن فاز ۱، بک‌اند را فقط روی <code>127.0.0.1</code> یا پشت یک reverse proxy با احراز هویت اجرا کنید. پیکربندی پیش‌فرض <code>docker-compose.yml</code> همین کار را می‌کند.</p>
+      <p data-en><b>Deployment note:</b> until phase 1 closes, run the backend on <code>127.0.0.1</code> only, or behind an authenticating reverse proxy. The default <code>docker-compose.yml</code> configuration already does this.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ ARCHITECTURE ══════════════════ -->
+<section id="arch">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow" data-fa>معماری</span>
+      <span class="eyebrow" data-en>Architecture</span>
+      <h2 data-fa>چهار کانتینر، یک شبکه</h2>
+      <h2 data-en>Four containers, one network</h2>
+      <p data-fa>مرورگر هرگز مستقیماً به بک‌اند وصل نمی‌شود. فراخوانی‌ها هم‌مبدأ (<code>/api/v1/*</code>) هستند و Next آن‌ها را به بک‌اند پراکسی می‌کند — بنابراین استقرار پشت reverse proxy یا میزبان پیش‌نمایش هیچ تغییری در سمت مرورگر نیاز ندارد.</p>
+      <p data-en>The browser never calls the backend directly. Requests are same-origin (<code>/api/v1/*</code>) and Next proxies them to the backend — so deployment behind a reverse proxy or a preview host needs no browser-side configuration.</p>
+    </div>
+
+    <div class="arch">
+      <svg viewBox="0 0 900 430" role="img" aria-labelledby="archTitle">
+        <title id="archTitle">AARK Kernel architecture diagram</title>
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#6f7b90"/>
+          </marker>
+        </defs>
+
+        <!-- browser -->
+        <rect x="330" y="14" width="240" height="52" rx="10" fill="#151a26" stroke="#232a38"/>
+        <text x="450" y="36" text-anchor="middle" fill="#e8ecf4" font-size="13" font-weight="700" font-family="sans-serif">Browser · Next.js 16</text>
+        <text x="450" y="54" text-anchor="middle" fill="#6f7b90" font-size="11" font-family="sans-serif">PWA · RTL · live chart</text>
+
+        <!-- frontend -->
+        <rect x="330" y="96" width="240" height="52" rx="10" fill="#151a26" stroke="#f4c85d" stroke-opacity=".45"/>
+        <text x="450" y="118" text-anchor="middle" fill="#f4c85d" font-size="13" font-weight="700" font-family="sans-serif">frontend :3000</text>
+        <text x="450" y="136" text-anchor="middle" fill="#a8b3c5" font-size="11" font-family="sans-serif">rewrites /api/v1/* (build-time target)</text>
+
+        <!-- backend -->
+        <rect x="300" y="186" width="300" height="72" rx="12" fill="#151a26" stroke="#f4c85d" stroke-opacity=".6"/>
+        <text x="450" y="210" text-anchor="middle" fill="#f4c85d" font-size="13" font-weight="700" font-family="sans-serif">backend :8000 · FastAPI</text>
+        <text x="450" y="230" text-anchor="middle" fill="#a8b3c5" font-size="11" font-family="sans-serif">public · protected (JWT+RBAC) · realtime</text>
+        <text x="450" y="247" text-anchor="middle" fill="#f87171" font-size="10.5" font-family="sans-serif">+ 7 ad-hoc routes still unauthenticated</text>
+
+        <!-- infra -->
+        <rect x="46" y="308" width="176" height="52" rx="10" fill="#151a26" stroke="#232a38"/>
+        <text x="134" y="330" text-anchor="middle" fill="#e8ecf4" font-size="12.5" font-weight="700" font-family="sans-serif">PostgreSQL 16</text>
+        <text x="134" y="348" text-anchor="middle" fill="#6f7b90" font-size="10.5" font-family="sans-serif">durable state</text>
+
+        <rect x="246" y="308" width="150" height="52" rx="10" fill="#151a26" stroke="#232a38"/>
+        <text x="321" y="330" text-anchor="middle" fill="#e8ecf4" font-size="12.5" font-weight="700" font-family="sans-serif">Redis 7</text>
+        <text x="321" y="348" text-anchor="middle" fill="#6f7b90" font-size="10.5" font-family="sans-serif">pub/sub fan-out</text>
+
+        <rect x="420" y="308" width="176" height="52" rx="10" fill="#151a26" stroke="#232a38"/>
+        <text x="508" y="330" text-anchor="middle" fill="#e8ecf4" font-size="12.5" font-weight="700" font-family="sans-serif">Key vault</text>
+        <text x="508" y="348" text-anchor="middle" fill="#6f7b90" font-size="10.5" font-family="sans-serif">0700 dir · 0600 file</text>
+
+        <rect x="620" y="308" width="196" height="52" rx="10" fill="#151a26" stroke="#232a38" stroke-dasharray="4 3"/>
+        <text x="718" y="330" text-anchor="middle" fill="#e8ecf4" font-size="12.5" font-weight="700" font-family="sans-serif">Ollama (optional)</text>
+        <text x="718" y="348" text-anchor="middle" fill="#6f7b90" font-size="10.5" font-family="sans-serif">local language model</text>
+
+        <!-- arrows -->
+        <line x1="450" y1="66" x2="450" y2="92" stroke="#6f7b90" stroke-width="1.5" marker-end="url(#ar)"/>
+        <line x1="450" y1="148" x2="450" y2="182" stroke="#f4c85d" stroke-width="1.5" marker-end="url(#ar)"/>
+        <line x1="420" y1="258" x2="160" y2="304" stroke="#6f7b90" stroke-width="1.5" marker-end="url(#ar)"/>
+        <line x1="440" y1="258" x2="325" y2="304" stroke="#6f7b90" stroke-width="1.5" marker-end="url(#ar)"/>
+        <line x1="460" y1="258" x2="505" y2="304" stroke="#6f7b90" stroke-width="1.5" marker-end="url(#ar)"/>
+        <line x1="490" y1="258" x2="712" y2="304" stroke="#6f7b90" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+        <text x="620" y="278" fill="#6f7b90" font-size="10.5" font-family="sans-serif" text-anchor="middle">host.docker.internal</text>
+
+        <text x="450" y="392" text-anchor="middle" fill="#6f7b90" font-size="11" font-family="sans-serif">Containers run as non-root: appuser (1001) and nextjs (1001)</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ INSTALL ══════════════════ -->
+<section id="install">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow" data-fa>نصب</span>
+      <span class="eyebrow" data-en>Installation</span>
+      <h2 data-fa>سه قدم، کمتر از پنج دقیقه</h2>
+      <h2 data-en>Three steps, under five minutes</h2>
+      <p data-fa>هیچ دانش فنی لازم نیست. یک دستور همه‌چیز را انجام می‌دهد.</p>
+      <p data-en>No technical knowledge required. One command does everything.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div></div>
+        <div>
+          <h3 data-fa>پیش‌نیاز را نصب کنید</h3>
+          <h3 data-en>Install the prerequisite</h3>
+          <p data-fa>فقط <b>Docker Desktop</b> و <b>Git</b>. حافظهٔ آزاد حداقل ۴ گیگابایت، پورت‌های ۳۰۰۰ و ۸۰۰۰ باید باز باشند.</p>
+          <p data-en>Only <b>Docker Desktop</b> and <b>Git</b>. At least 4 GB of free RAM, and ports 3000 and 8000 must be free.</p>
+          <pre><code># Docker:  https://docs.docker.com/get-docker/
+# Git:     https://git-scm.com/downloads</code></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div></div>
+        <div>
+          <h3 data-fa>کد را بگیرید و جادوگر را اجرا کنید</h3>
+          <h3 data-en>Get the code and run the installer</h3>
+          <p data-fa>جادوگر از شما ایمیل و رمز ادمین را می‌پرسد (حداقل ۱۲ کاراکتر)، فایل تنظیمات را با رمزهای تصادفی ۳۲ کاراکتری می‌سازد، کانتینرها را بالا می‌آورد و حساب ادمین را واقعاً در دیتابیس می‌سازد.</p>
+          <p data-en>The installer asks for an admin email and password (12+ characters), writes the configuration with random 32-character secrets, starts the containers, and actually creates the admin account in the database.</p>
+          <pre><code>git clone https://github.com/ansariaiadmin/aark-kernel.git
+cd aark-kernel
+chmod +x install.sh
+./install.sh</code></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div></div>
+        <div>
+          <h3 data-fa>وارد شوید</h3>
+          <h3 data-en>Sign in</h3>
+          <p data-fa>مرورگر را باز کنید و با همان ایمیل و رمزی که دادید وارد شوید.</p>
+          <p data-en>Open your browser and sign in with the email and password you chose.</p>
+          <pre><code>http://localhost:3000</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <span class="ci">💡</span>
+      <p data-fa><b>اختیاری:</b> برای گفت‌وگو با ایجنت هوشمند، <a href="https://ollama.com/">Ollama</a> را نصب و مدل <code>qwen2.5:7b</code> را دریافت کنید. بدون آن، همه‌چیز به‌جز گفت‌وگو با ایجنت کار می‌کند.</p>
+      <p data-en><b>Optional:</b> to converse with the AI agent, install <a href="https://ollama.com/">Ollama</a> and pull the <code>qwen2.5:7b</code> model. Without it, everything except the agent conversation works.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ VERIFY ══════════════════ -->
+<section id="verify">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow" data-fa>راستی‌آزمایی مستقل</span>
+      <span class="eyebrow" data-en>Independent verification</span>
+      <h2 data-fa>هیچ‌کدام از اعداد را از ما قبول نکنید</h2>
+      <h2 data-en>Do not take any of these numbers on trust</h2>
+      <p data-fa>این‌ها را خودتان اجرا کنید. تست‌ها به هیچ سرویس خارجی نیاز ندارند.</p>
+      <p data-en>Run these yourself. The tests require no external services.</p>
+    </div>
+
+    <div class="codeblock">
+      <header><span>verify.sh</span><span data-fa>کپی و اجرا</span><span data-en>copy and run</span></header>
+      <pre><code><span class="c"># 1. Backend — lint and tests</span>
+cd backend
+ruff check .                  <span class="c"># → All checks passed!</span>
+pytest tests/ -q              <span class="c"># → 114 passed</span>
+
+<span class="c"># 2. Live route count, straight from the OpenAPI schema</span>
+python -c "from app.main import app; print(len(app.openapi()['paths']))"   <span class="c"># → 39</span>
+
+<span class="c"># 3. Frontend — lint, types, build</span>
+cd ../frontend
+npm run verify                <span class="c"># → eslint ✓  tsc ✓  next build ✓</span>
+
+<span class="c"># 4. Compose configuration</span>
+docker compose config -q      <span class="c"># → exit 0</span></code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ ROADMAP ══════════════════ -->
+<section id="roadmap">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow" data-fa>نقشهٔ راه</span>
+      <span class="eyebrow" data-en>Roadmap</span>
+      <h2 data-fa>هر فاز با یک دروازهٔ انتشار بسته می‌شود</h2>
+      <h2 data-en>Every phase closes with a release gate</h2>
+      <p data-fa>تا سبز نشدن دروازه، شمارهٔ نسخه افزایش نمی‌یابد. تسک‌به‌تسک با معیار پذیرش در مخزن ثبت شده است.</p>
+      <p data-en>The version number does not increase until its gate is green. Task-level detail with acceptance criteria lives in the repository.</p>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="phase">
+        <div class="phase-top">
+          <h3 data-fa>فاز ۰ — یکپارچگی ساخت</h3>
+          <h3 data-en>Phase 0 — Build integrity</h3>
+          <span class="pill ok" data-fa>بسته شد · v3.3.0</span>
+          <span class="pill ok" data-en>Complete · v3.3.0</span>
+        </div>
+        <ul>
+          <li data-fa>۲۳ اندپوینت گم‌شده به اپ برگشتند (۱۱ → ۳۹ روت)</li>
+          <li data-en>23 lost endpoints restored (11 → 39 routes)</li>
+          <li data-fa>هش رمز تعمیر شد — پیش از این هیچ کاربری ساخته نمی‌شد</li>
+          <li data-en>Password hashing repaired — previously no user could be created</li>
+          <li data-fa>بن‌بست نصب تازه شکسته شد (bootstrap ادمین)</li>
+          <li data-en>Fresh-install deadlock broken (admin bootstrap)</li>
+          <li data-fa><code>next build</code> و CI هر دو سبز شدند</li>
+          <li data-en><code>next build</code> and CI both green</li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <div class="phase-top">
+          <h3 data-fa>فاز ۱ — امنیت و مستندات</h3>
+          <h3 data-en>Phase 1 — Security and docs</h3>
+          <span class="pill wip" data-fa>بعدی · v3.4.0</span>
+          <span class="pill wip" data-en>Next · v3.4.0</span>
+        </div>
+        <ul>
+          <li data-fa>احراز هویت برای ۷ مسیر بی‌محافظ</li>
+          <li data-en>Authenticate the seven unprotected routes</li>
+          <li data-fa>محدودسازی نرخ روی ورود</li>
+          <li data-en>Rate limiting on login</li>
+          <li data-fa>هدرهای امنیتی و اسکن راز در CI</li>
+          <li data-en>Security headers and secret scanning in CI</li>
+          <li data-fa>همهٔ کلیدهای <code>.env.example</code> واقعاً خوانده شوند</li>
+          <li data-en>Every <code>.env.example</code> key actually read</li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <div class="phase-top">
+          <h3 data-fa>فاز ۲ — داده و ایجنت واقعی</h3>
+          <h3 data-en>Phase 2 — Real data and agent</h3>
+          <span class="pill todo" data-fa>برنامه‌ریزی · v3.5.0</span>
+          <span class="pill todo" data-en>Planned · v3.5.0</span>
+        </div>
+        <ul>
+          <li data-fa>دادهٔ بازار واقعی به‌جای دادهٔ مصنوعی در VaR</li>
+          <li data-en>Real market data replacing synthetic VaR input</li>
+          <li data-fa>پیاده‌سازی ۱۳ ابزار stub ایجنت</li>
+          <li data-en>Implement the 13 stub agent tools</li>
+          <li data-fa>تصمیم نهایی دربارهٔ زیرسیستم‌های یتیم</li>
+          <li data-en>Final decision on orphaned subsystems</li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <div class="phase-top">
+          <h3 data-fa>فاز ۳ — بلوغ محصول</h3>
+          <h3 data-en>Phase 3 — Product maturity</h3>
+          <span class="pill todo" data-fa>برنامه‌ریزی · v4.0.0</span>
+          <span class="pill todo" data-en>Planned · v4.0.0</span>
+        </div>
+        <ul>
+          <li data-fa>مهاجرت Alembic با آزمون رفت و برگشت</li>
+          <li data-en>Alembic migrations with tested rollback</li>
+          <li data-fa>احراز هویت دومرحله‌ای (TOTP)</li>
+          <li data-en>Two-factor authentication (TOTP)</li>
+          <li data-fa>چارچوب استراتژی با backtest</li>
+          <li data-en>Strategy framework with backtesting</li>
+          <li data-fa>تست end-to-end روی کانتینر واقعی در CI</li>
+          <li data-en>End-to-end tests on real containers in CI</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ FAQ ══════════════════ -->
+<section id="faq">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow" data-fa>پرسش‌های پرتکرار</span>
+      <span class="eyebrow" data-en>FAQ</span>
+      <h2 data-fa>آنچه کاربران می‌پرسند</h2>
+      <h2 data-en>What people ask</h2>
+    </div>
+
+    <details open>
+      <summary data-fa>پول واقعی خرج می‌شود؟</summary>
+      <summary data-en>Does this spend real money?</summary>
+      <p data-fa>خیر. در این نسخه بخش معاملات روی حالت آزمایشی (Paper Trading) کار می‌کند: سفارش شبیه‌سازی می‌شود و هیچ پول واقعی جابه‌جا نمی‌شود. یکپارچگی نوبیتکس برای گرفتن قیمت، موجودی و پوزیشن است.</p>
+      <p data-en>No. In this version trading runs in paper-trading mode: orders are simulated and no real funds move. The Nobitex integration is used for prices, balances and positions.</p>
+    </details>
+
+    <details>
+      <summary data-fa>داده‌هایم کجا ذخیره می‌شود؟</summary>
+      <summary data-en>Where is my data stored?</summary>
+      <p data-fa>روی سرور خودتان. PostgreSQL و گاوصندوق کلیدها هر دو محلی‌اند. هیچ داده‌ای به سرور بیرون ارسال نمی‌شود. کلید API صرافی بیرون از دیتابیس، در فایلی با مجوز ۰۶۰۰ نگه داشته می‌شود تا نشت دیتابیس کلید شما را لو ندهد.</p>
+      <p data-en>On your own server. PostgreSQL and the key vault are both local. No data is sent to an external server. The exchange API key is kept outside the database, in a file at mode 0600, so a database leak does not expose it.</p>
+    </details>
+
+    <details>
+      <summary data-fa>روی موبایل کار می‌کند؟</summary>
+      <summary data-en>Does it work on mobile?</summary>
+      <p data-fa>بله. برنامه یک PWA است: در مرورگر موبایل گزینهٔ «Add to Home Screen» را بزنید تا مثل یک اپلیکیشن بومی نصب شود.</p>
+      <p data-en>Yes. The app is a PWA: in a mobile browser choose "Add to Home Screen" and it installs like a native application.</p>
+    </details>
+
+    <details>
+      <summary data-fa>چند کاربر می‌تواند هم‌زمان استفاده کند؟</summary>
+      <summary data-en>Can several people use it at once?</summary>
+      <p data-fa>بله. سه نقش وجود دارد: <b>Admin</b> (کنترل کامل)، <b>Trader</b> (معامله) و <b>Viewer</b> (فقط مشاهده). Admin از طریق <code>POST /api/v1/auth/register</code> کاربر می‌سازد.</p>
+      <p data-en>Yes. There are three roles: <b>Admin</b> (full control), <b>Trader</b> (trade) and <b>Viewer</b> (read-only). An Admin creates users via <code>POST /api/v1/auth/register</code>.</p>
+    </details>
+
+    <details>
+      <summary data-fa>چرا مستندات برخی چیزها را «ناقص» می‌نامند؟</summary>
+      <summary data-en>Why do the docs call some things incomplete?</summary>
+      <p data-fa>چون واقعاً ناقص‌اند. نسخهٔ قبلی مستندات چیزهایی را ادعا می‌کرد که کد پشتیبانی نمی‌کرد. ما ترجیح می‌دهیم یک شکاف را صادقانه اعلام و در نقشهٔ راه ثبت کنیم تا اینکه ادعای نادرستی بکنیم. ممیزی کامل ۴۵ یافته در <code>docs/AUDIT.md</code> موجود است.</p>
+      <p data-en>Because they genuinely are. The previous documentation claimed things the code did not support. We would rather state a gap honestly and track it in the roadmap than make a false claim. The full audit of 45 findings is in <code>docs/AUDIT.md</code>.</p>
+    </details>
+
+    <details>
+      <summary data-fa>چطور مشارکت کنم؟</summary>
+      <summary data-en>How do I contribute?</summary>
+      <p data-fa>از <code>CONTRIBUTING.md</code> شروع کنید. هر Pull Request باید هم تست بک‌اند و هم راستی‌آزمایی فرانت را سبز نگه دارد؛ CI هر دو را دوباره بررسی می‌کند. حتی اصلاح یک اشتباه تایپی در مستندات کمک واقعی است.</p>
+      <p data-en>Start with <code>CONTRIBUTING.md</code>. Every pull request must keep both the backend tests and the frontend verification green; CI re-checks both. Even fixing a documentation typo is a genuine contribution.</p>
+    </details>
+  </div>
+</section>
+
+<!-- ══════════════════ CTA ══════════════════ -->
+<section id="cta">
+  <div class="wrap" style="text-align:center; max-width:720px;">
+    <h2 data-fa>همین حالا امتحش کنید</h2>
+    <h2 data-en>Try it now</h2>
+    <p data-fa style="color:var(--text-2); font-size:17px;">
+      یک دستور، کمتر از پنج دقیقه، بدون هیچ دانش فنی. مجوز MIT یعنی استفادهٔ تجاری، تغییر و توزیع کاملاً باز است.
+    </p>
+    <p data-en style="color:var(--text-2); font-size:17px;">
+      One command, under five minutes, no technical knowledge required. The MIT licence means commercial use, modification and distribution are fully open.
+    </p>
+    <div class="hero-cta" style="justify-content:center; margin-top:26px;">
+      <a class="btn btn-primary" href="https://github.com/ansariaiadmin/aark-kernel" data-fa>مشاهدهٔ مخزن</a>
+      <a class="btn btn-primary" href="https://github.com/ansariaiadmin/aark-kernel" data-en>View the repository</a>
+      <a class="btn btn-ghost" href="https://github.com/ansariaiadmin/aark-kernel/releases" data-fa>انتشارها</a>
+      <a class="btn btn-ghost" href="https://github.com/ansariaiadmin/aark-kernel/releases" data-en>Releases</a>
+      <a class="btn btn-ghost" href="https://t.me/ansariaiadmin" data-fa>گفتگو در تلگرام</a>
+      <a class="btn btn-ghost" href="https://t.me/ansariaiadmin" data-en>Talk on Telegram</a>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ FOOTER ══════════════════ -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <a class="brand" href="#top" style="margin-bottom:14px;">
+          <img src="assets/icon-192.png" alt="" width="32" height="32">
+          <span>AARK&nbsp;Kernel</span>
+        </a>
+        <p style="color:var(--text-3); font-size:13.5px; margin:0;" data-fa>
+          پلتفرم خودمیزبان ترید و مدیریت ریسک. ساخته‌شده با FastAPI و Next.js.
+        </p>
+        <p style="color:var(--text-3); font-size:13.5px; margin:0;" data-en>
+          A self-hosted trading and risk platform. Built with FastAPI and Next.js.
+        </p>
+      </div>
+      <div>
+        <h4 data-fa>مستندات</h4><h4 data-en>Documentation</h4>
+        <ul>
+          <li><a href="https://github.com/ansariaiadmin/aark-kernel#readme" data-fa>README</a><a href="https://github.com/ansariaiadmin/aark-kernel#readme" data-en>README</a></li>
+          <li><a href="https://github.com/ansariaiadmin/aark-kernel/blob/main/docs/INSTALLATION.md" data-fa>راهنمای نصب</a><a href="https://github.com/ansariaiadmin/aark-kernel/blob/main/docs/INSTALLATION.md" data-en>Installation</a></li>
+          <li><a href="https://github.com/ansariaiadmin/aark-kernel/blob/main/docs/API.md" data-fa>مرجع API</a><a href="https://github.com/ansariaiadmin/aark-kernel/blob/main/docs/API.md" data-en>API reference</a></li>
+          <li><a href="https://github.com/ansariaiadmin/aark-kernel/blob/main/docs/AUDIT.md" data-fa>ممیزی</a><a href="https://github.com/ansariaiadmin/aark-kernel/blob/main/docs/AUDIT.md" data-en>Audit</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 data-fa>پروژه</h4><h4 data-en>Project</h4>
+        <ul>
+          <li><a href="https://github.com/ansariaiadmin/aark-kernel/blob/main/ROADMAP.md" data-fa>نقشهٔ راه</a><a href="https://github.com/ansariaiadmin/aark-kernel/blob/main/ROADMAP.md" data-en>Roadmap</a></li>
+          <li><a href="https://github.com/ansariaiadmin/aark-kernel/blob/main/CHANGELOG.md" data-fa>تغییرات</a><a href="https://github.com/ansariaiadmin/aark-kernel/blob/main/CHANGELOG.md" data-en>Changelog</a></li>
+          <li><a href="https://github.com/ansariaiadmin/aark-kernel/blob/main/SECURITY.md" data-fa>امنیت</a><a href="https://github.com/ansariaiadmin/aark-kernel/blob/main/SECURITY.md" data-en>Security</a></li>
+          <li><a href="https://github.com/ansariaiadmin/aark-kernel/blob/main/CONTRIBUTING.md" data-fa>مشارکت</a><a href="https://github.com/ansariaiadmin/aark-kernel/blob/main/CONTRIBUTING.md" data-en>Contributing</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 data-fa>انجمن</h4><h4 data-en>Community</h4>
+        <ul>
+          <li><a href="https://t.me/ansariaiadmin" data-fa>تلگرام</a><a href="https://t.me/ansariaiadmin" data-en>Telegram</a></li>
+          <li><a href="https://github.com/ansariaiadmin/aark-kernel/issues" data-fa>گزارش باگ</a><a href="https://github.com/ansariaiadmin/aark-kernel/issues" data-en>Report a bug</a></li>
+          <li><a href="https://github.com/ansariaiadmin/aark-kernel/pulls" data-fa>Pull Request</a><a href="https://github.com/ansariaiadmin/aark-kernel/pulls" data-en>Pull requests</a></li>
+          <li><a href="https://github.com/ansariaiadmin/aark-kernel/security/advisories/new" data-fa>گزارش امنیتی</a><a href="https://github.com/ansariaiadmin/aark-kernel/security/advisories/new" data-en>Security report</a></li>
+          <li><a href="https://github.com/ansariaiadmin/aark-kernel/blob/main/CODE_OF_CONDUCT.md" data-fa>قوانین رفتار</a><a href="https://github.com/ansariaiadmin/aark-kernel/blob/main/CODE_OF_CONDUCT.md" data-en>Code of conduct</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 AARK Kernel · <span data-fa>مجوز MIT</span><span data-en>MIT licensed</span></span>
+      <span class="sp">v3.3.0</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/app.js" defer></script>
+</body>
+</html>

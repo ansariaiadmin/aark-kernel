@@ -2,11 +2,12 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.core.vault import get_vault_token
 from app.services.trading import (
     NobitexClient,
     OrderManager,
@@ -29,21 +30,21 @@ _portfolio_manager: PortfolioManager | None = None
 async def get_nobitex_client() -> NobitexClient:
     global _nobitex_client
     if _nobitex_client is None:
-        # Get API key from vault
-        import json
-        import os
-        CONFIG_FILE = os.path.expanduser("~/.aark/nobitex.vault")
-        api_key = ""
-        if os.path.exists(CONFIG_FILE):
-            try:
-                with open(CONFIG_FILE) as f:
-                    api_key = json.load(f).get("api_key", "")
-            except Exception:  # noqa: BLE001
-                pass
+        # Read through app.core.vault instead of re-implementing the vault
+        # layout here (this copy silently skipped the 0600/0700 hardening).
+        api_key = get_vault_token()
         if not api_key:
             raise HTTPException(status_code=400, detail="Nobitex API key not configured")
         _nobitex_client = NobitexClient(api_key=api_key, base_url=settings.NOBITEX_API_BASE)
     return _nobitex_client
+
+
+def reset_nobitex_client() -> None:
+    """Drop the cached client (used after the vault key changes/cleared)."""
+    global _nobitex_client, _order_manager, _portfolio_manager
+    _nobitex_client = None
+    _order_manager = None
+    _portfolio_manager = None
 
 
 async def get_order_manager(client: NobitexClient = Depends(get_nobitex_client)) -> OrderManager:
@@ -253,29 +254,41 @@ async def get_pnl(
 async def get_portfolio_value(
     manager: PortfolioManager = Depends(get_portfolio_manager),
 ) -> dict[str, Any]:
+    """Total portfolio value quoted in IRT.
+
+    Previously this fetched each ticker, threw the response away and wrote
+    ``Decimal(0)`` as the price ("# Placeholder"), so every non-IRT holding was
+    valued at zero and the dashboard's ``total_value_irt`` was wrong.
+    """
     await manager.refresh_balances()
-    # Get prices for all non-IRT assets
-    prices = {}
+
+    prices: dict[str, Decimal] = {}
+    breakdown: dict[str, Any] = {}
     client = manager.client
-    for asset in manager.balances:
-        if asset != "IRT":
-            try:
-                await client.get_ticker(f"{asset}USDT")
-                # Extract price from ticker
-                prices[f"{asset}IRT"] = Decimal(0)  # Placeholder
-            except Exception:  # noqa: BLE001
-                pass
+    for asset, balance in manager.balances.items():
+        if asset == "IRT":
+            breakdown[asset] = {"quantity": float(balance.total), "price": 1.0, "value_irt": float(balance.total)}
+            continue
+        symbol = f"{asset}IRT"
+        price = await client.get_price(symbol)
+        prices[symbol] = price
+        breakdown[asset] = {
+            "quantity": float(balance.total),
+            "price": float(price),
+            "value_irt": float(balance.total * price),
+        }
 
     total = await manager.get_total_portfolio_value(prices)
-    return {"total_value_irt": float(total), "breakdown": {}}
+    return {"total_value_irt": float(total), "breakdown": breakdown}
 
 
 @router.post("/orders/batch")
 async def place_batch_orders(
     orders: list[PlaceOrderRequest],
-    background_tasks: BackgroundTasks,
     manager: OrderManager = Depends(get_order_manager),
 ) -> dict[str, Any]:
+    # `background_tasks` was declared but never used — orders are submitted
+    # inline below, so the parameter only inflated the OpenAPI signature.
     results = []
     for req in orders:
         try:

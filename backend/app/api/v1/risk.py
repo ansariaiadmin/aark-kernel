@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
@@ -19,6 +20,15 @@ logger = get_logger(__name__)
 
 # Global risk engine instance
 _risk_engine: AdvancedRiskEngine | None = None
+
+
+def get_risk_profile() -> RiskProfile:
+    """Deterministic limits, derived from settings — same source as app.main."""
+    return RiskProfile(
+        max_portfolio_allocation_irt=settings.MAX_PORTFOLIO_ALLOCATION_IRT,
+        max_single_trade_pct=settings.MAX_SINGLE_TRADE_PCT,
+        max_daily_loss_pct=settings.MAX_DAILY_LOSS_PCT,
+    )
 
 
 def get_risk_engine() -> AdvancedRiskEngine:
@@ -66,6 +76,46 @@ class RiskMetricsResponse(BaseModel):
     timestamp: str
 
 
+class StressTestRequest(BaseModel):
+    """Body for ``POST /risk/stress-test``.
+
+    Previously these were three loose function parameters. With more than one
+    body-ish param FastAPI embeds them under their argument names, which
+    happened to work — but it made the schema implicit and undocumented.
+    """
+
+    positions: dict[str, float] = Field(default_factory=dict, description="symbol -> quantity")
+    prices: dict[str, float] = Field(default_factory=dict, description="symbol -> current price")
+    scenarios: dict[str, dict[str, float]] | None = Field(
+        None, description="custom shocks; omit to use the 6 built-in scenarios"
+    )
+
+
+class RiskValidateRequest(BaseModel):
+    """Body for ``POST /risk/validate``.
+
+    This is the fix for a real frontend/backend contract break: `daily_pnl` and
+    `portfolio_value` are scalars, so FastAPI bound them as **query** params
+    while `positions`/`prices` were body params. The dashboard POSTed all four
+    in one JSON body and always received 422.
+    """
+
+    positions: dict[str, float] = Field(default_factory=dict, description="symbol -> quantity")
+    prices: dict[str, float] = Field(default_factory=dict, description="symbol -> current price")
+    daily_pnl: float = Field(0.0, description="realised+unrealised PnL for the day, quote ccy")
+    portfolio_value: float = Field(..., gt=0, description="total portfolio value, quote ccy")
+    returns_history: dict[str, list[float]] | None = Field(
+        None, description="symbol -> daily return series (enables VaR metrics)"
+    )
+
+
+class LegacyValidateRequest(BaseModel):
+    """Body for ``POST /risk/legacy/validate`` (scalars were query-bound)."""
+
+    current_balance_irt: float = Field(..., ge=0)
+    requested_amount_irt: float
+
+
 class PositionSizeRequest(BaseModel):
     symbol: str
     signal_strength: float = Field(..., ge=0, le=1)
@@ -93,7 +143,6 @@ async def get_var(
     """Calculate Value at Risk using specified method."""
     # In production, fetch actual returns from database
     # For now, generate sample returns
-    import numpy as np
     returns = np.random.normal(0.0005, 0.02, 252)  # Sample daily returns
 
     if method == "historical":
@@ -116,13 +165,11 @@ async def get_var(
 
 @router.post("/stress-test", response_model=list[StressTestResponse])
 async def run_stress_test(
-    positions: dict[str, float],
-    prices: dict[str, float],
-    scenarios: dict[str, dict[str, float]] | None = None,
+    request: StressTestRequest,
     engine: AdvancedRiskEngine = Depends(get_risk_engine),
 ) -> list[StressTestResponse]:
-    """Run portfolio stress tests against defined scenarios."""
-    results = engine.run_stress_tests(positions, prices, scenarios)
+    """Run portfolio stress tests against the 6 built-in (or custom) scenarios."""
+    results = engine.run_stress_tests(request.positions, request.prices, request.scenarios)
     return [
         StressTestResponse(
             scenario_name=r.scenario_name,
@@ -145,7 +192,6 @@ async def get_correlation_risk(
 ) -> CorrelationResponse:
     """Analyze correlation risk across positions."""
     # In production, fetch actual returns from market data service
-    import numpy as np
     returns_data = {s: np.random.normal(0, 0.02, lookback_days) for s in symbols}
 
     result = engine.analyze_correlation(returns_data)
@@ -164,25 +210,20 @@ async def get_correlation_risk(
 
 @router.post("/validate", response_model=RiskMetricsResponse)
 async def validate_portfolio_risk(
-    positions: dict[str, float],
-    prices: dict[str, float],
-    daily_pnl: float,
-    portfolio_value: float,
-    returns_history: dict[str, list[float]] | None = None,
+    request: RiskValidateRequest,
     engine: AdvancedRiskEngine = Depends(get_risk_engine),
 ) -> RiskMetricsResponse:
     """Comprehensive portfolio risk validation."""
     # Convert returns history to numpy arrays
     np_returns = {}
-    if returns_history:
-        import numpy as np
-        np_returns = {k: np.array(v) for k, v in returns_history.items()}
+    if request.returns_history:
+        np_returns = {k: np.array(v) for k, v in request.returns_history.items()}
 
     metrics = engine.validate_portfolio_risk(
-        positions=positions,
-        prices=prices,
-        daily_pnl=daily_pnl,
-        portfolio_value=portfolio_value,
+        positions=request.positions,
+        prices=request.prices,
+        daily_pnl=request.daily_pnl,
+        portfolio_value=request.portfolio_value,
         returns_history=np_returns if np_returns else None,
     )
 
@@ -231,7 +272,7 @@ async def calculate_position_size(
 
     # Calculate components for transparency
     risk_budget = request.portfolio_value * request.max_risk_per_trade
-    daily_vol = request.volatility * np.sqrt(1/252) if 'np' in globals() else request.volatility * 0.063
+    daily_vol = request.volatility * np.sqrt(1 / 252)
     vol_adjusted = risk_budget / max(daily_vol, 0.001)
     signal_adjusted = vol_adjusted * request.signal_strength
 
@@ -253,17 +294,14 @@ async def get_risk_summary(
 
 @router.post("/legacy/validate")
 async def legacy_validate_order(
-    current_balance_irt: float,
-    requested_amount_irt: float,
+    request: LegacyValidateRequest,
 ) -> dict[str, Any]:
-    """Backward compatible risk validation endpoint."""
-    profile = RiskProfile(
-        max_portfolio_allocation_irt=settings.MAX_PORTFOLIO_ALLOCATION_IRT,
-        max_single_trade_pct=settings.MAX_SINGLE_TRADE_PCT,
-        max_daily_loss_pct=settings.MAX_DAILY_LOSS_PCT,
+    """Backward compatible risk validation endpoint.
+
+    Shares one RiskProfile with `app.main` so the agent path and the API path
+    can never disagree about the limits.
+    """
+    approved, message = DeterministicRiskEngine.validate_order(
+        get_risk_profile(), request.current_balance_irt, request.requested_amount_irt
     )
-    approved, message = DeterministicRiskEngine.validate_order(profile, current_balance_irt, requested_amount_irt)
     return {"approved": approved, "message": message}
-
-
-from datetime import datetime, timezone

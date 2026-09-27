@@ -14,7 +14,11 @@ class Settings(BaseSettings):
 
     # App
     APP_NAME: str = "AARK Kernel Ops"
-    APP_VERSION: str = "2.2.0"
+    # SINGLE SOURCE OF TRUTH for the release version.
+    # `tests/test_release_consistency.py` fails CI if frontend/package.json,
+    # README or CHANGELOG drift away from this value — the repo previously
+    # advertised 2.2.0 / 1.0.4 / 3.1.2 / 3.2.3 / 4.0.0 simultaneously.
+    APP_VERSION: str = "3.3.0"
     DEBUG: bool = False
     ENVIRONMENT: str = "production"
 
