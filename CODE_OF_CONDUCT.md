@@ -53,8 +53,9 @@ representing the project.
 
 ## Reporting
 
-Report unacceptable behaviour privately to `conduct@ansariaiadmin.dev`. All
-complaints will be reviewed and investigated promptly and fairly.
+Report unacceptable behaviour privately to `conduct@ansariai.ir`, or open a
+private GitHub Security Advisory addressed to the maintainers. All complaints
+will be reviewed and investigated promptly and fairly.
 
 Maintainers are obligated to respect the privacy and security of the reporter of
 any incident.

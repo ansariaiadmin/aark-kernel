@@ -26,6 +26,20 @@ actual behaviour, logs, and your environment.
 see [`SECURITY.md`](SECURITY.md). A public report exposes every deployment before
 a fix exists.
 
+## Contact the maintainer
+
+For questions that are not bugs — installation help, deployment advice, using
+AARK Kernel in your own workflow, or collaboration — reach out directly:
+
+| Channel | Handle |
+|---|---|
+| Telegram | [@ansariaiadmin](https://t.me/ansariaiadmin) |
+| GitHub issues | [Open an issue](https://github.com/ansariaiadmin/aark-kernel/issues/new/choose) |
+| Email | `hello@ansariai.ir` |
+
+Please keep security vulnerabilities out of Telegram — report those privately as
+described in [`SECURITY.md`](SECURITY.md).
+
 ## Response expectations
 
 This is a community-maintained open-source project. There is no paid support
@@ -34,6 +48,7 @@ tier and no guaranteed response time, but in practice:
 | Channel | Expected response |
 |---|---|
 | Security reports | Acknowledged within 24 hours |
+| Telegram (general questions) | Usually within a day or two |
 | Bug reports with a reproduction | Usually within a few days |
 | Feature requests | Reviewed during roadmap planning |
 | Pull requests | Reviewed within a week |

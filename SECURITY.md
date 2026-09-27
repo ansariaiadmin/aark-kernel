@@ -26,8 +26,17 @@ Report privately through one of these channels:
 
 | Channel | Address |
 |---|---|
-| Email | `security@ansariaiadmin.dev` |
-| GitHub Security Advisories | [New advisory](https://github.com/ansariaiadmin/aark-kernel/security/advisories/new) |
+| GitHub Security Advisories — **preferred** | [New advisory](https://github.com/ansariaiadmin/aark-kernel/security/advisories/new) |
+| Email | `security@ansariai.ir` |
+
+**Use GitHub Security Advisories when you can.** It is private by default, keeps
+a tracked record of the report, and needs no mail setup on our side. The email
+address becomes active once the `ansariai.ir` domain is connected to a mail
+provider; until then an advisory is the reliable route.
+
+Telegram, issues, discussions and pull requests are **not** accepted channels for
+security reports — they are public or unmoderated spaces, and a public report
+exposes every deployment before a fix exists.
 
 ### What to include
 

@@ -471,12 +471,25 @@ backend/scripts/           generate_api_docs.py
 
 ---
 
+## پشتیبانی و تماس
+
+| موضوع | مسیر |
+|---|---|
+| سوال عمومی، نصب، همکاری | تلگرام: [@ansariaiadmin](https://t.me/ansariaiadmin) |
+| باگ یا درخواست قابلیت | [Issue جدید](https://github.com/ansariaiadmin/aark-kernel/issues/new/choose) |
+| گزارش آسیب‌پذیری | [`SECURITY.md`](SECURITY.md) — خصوصی، نه Issue عمومی |
+
+جزئیات کامل در [`SUPPORT.md`](SUPPORT.md).
+
+---
+
 <div align="center">
 
 **AARK Kernel v3.3.0** · ساخته‌شده با FastAPI و Next.js
 
 [گزارش باگ](https://github.com/ansariaiadmin/aark-kernel/issues/new) ·
 [درخواست قابلیت](https://github.com/ansariaiadmin/aark-kernel/issues/new) ·
-[مستندات](docs/)
+[مستندات](docs/) ·
+[تلگرام](https://t.me/ansariaiadmin)
 
 </div>
