@@ -24,9 +24,17 @@ export function OrderBook() {
   const [asks, setAsks] = useState(mockAsks);
 
   useEffect(() => {
+    // Simulated depth jitter until the real order-book feed lands (Phase 2).
+    // `setAsks` used to be destructured and never called, which failed the
+    // project's own eslint `no-unused-vars` rule and broke CI lint.
+    const jitter = (rows: Order[]) =>
+      rows
+        .map((o) => ({ ...o, amount: Math.max(0, o.amount + (Math.random() - 0.5) * 0.1) }))
+        .filter((o) => o.amount > 0.0001);
+
     const interval = setInterval(() => {
-      // Simulate real-time updates via WebSocket manager
-      setBids((prev) => prev.map((o) => ({ ...o, amount: o.amount + (Math.random() - 0.5) * 0.1 })).filter((o) => o.amount > 0));
+      setBids(jitter);
+      setAsks(jitter);
     }, 2000);
     return () => clearInterval(interval);
   }, []);

@@ -1,17 +1,44 @@
-# AARK Kernel v2.2 — Enterprise Financial Trading Platform
+# AARK Kernel — Enterprise Financial Trading Platform
 
-[![Build](https://github.com/ansariaiadmin/aark-kernel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ansariaiadmin/aark-kernel/actions)
-[![Tests](https://img.shields.io/badge/tests-54%20passed-brightgreen)](https://github.com/ansariaiadmin/aark-kernel/actions)
+[![CI](https://github.com/ansariaiadmin/aark-kernel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ansariaiadmin/aark-kernel/actions)
+![Tests](https://img.shields.io/badge/tests-109%20passed-brightgreen)
+![Version](https://img.shields.io/badge/version-3.3.0-blue)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js)](https://nextjs.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](docker-compose.yml)
 
-> Production-grade, multi-agent trading system with multi-model AI router, real trading engine (Nobitex), paper trading, advanced risk (VaR, CVaR, stress, correlation, backtest), JWT + RBAC, WebSocket pub/sub, and enterprise observability — all with 54 automated tests.
+**نسخهٔ 3.3.0** — فاز ۰ (یکپارچگی ساخت و سیم‌کشی) بسته شد.
 
-## 🚀 برای افراد غیر فنی / For Non-Technical Users — نصب در ۱ دقیقه!
+> پلتفرم معاملاتی با موتور ریسک پیشرفته (VaR/CVaR/stress/correlation)،
+> احراز هویت JWT + RBAC، WebSocket بلادرنگ، یکپارچگی با نوبیتکس، و داشبورد Next.js.
+> **۳۹ روت زنده · ۱۰۹ تست · lint/typecheck/build صفر خطا.**
 
-**فقط یک دستور / Just one command:**
+---
+
+## 📢 صداقت دربارهٔ وضعیت پروژه
+
+این README در نسخهٔ 3.3.0 بازنویسی شد، چون نسخهٔ قبلی چیزهایی را تبلیغ می‌کرد
+که در کد وجود نداشت. ممیزی کامل در [`docs/AUDIT.md`](docs/AUDIT.md) است.
+
+**قاعدهٔ این فایل:** هر ادعا یا یک تست پشتش است، یا یک دستور که خودتان می‌توانید اجرا کنید.
+
+| ✅ واقعاً کار می‌کند (تست‌شده) | ⚠️ هنوز کامل نیست (در ROADMAP ثبت شده) |
+|---|---|
+| موتور ریسک: VaR سه روش، CVaR، ۶ سناریوی stress، correlation + HHI، position sizing | ۱۳ ابزار ایجنت هنوز **stub** هستند |
+| احراز هویت: bcrypt، JWT ۳۰ دقیقه‌ای، RBAC، audit log | `/risk/var` دادهٔ **تصادفی** برمی‌گرداند، نه بازار واقعی |
+| Paper trader: slippage، limit/stop، PnL، rebalance (۲۲ تست) | `paper_trader` هنوز به **اپ** وصل نیست (فقط تست) |
+| WebSocket pub/sub با احراز هویت توکن | `notification` و `sms` ماژول‌های **یتیم** هستند |
+| یکپارچگی نوبیتکس: order lifecycle، balances، positions | `robots/intelligence/` یتیم کامل است |
+| ۳۹ روت زنده، همه مستند و هم‌راستا با OpenAPI | PWA manifest به آیکون‌های ناموجود ارجاع می‌دهد |
+| داشبورد Next.js با ورود واقعی، تب‌ها، Kill Switch | مهاجرت DB دستی است (Alembic ندارد) |
+
+---
+
+## 🚀 نصب سریع
+
+### خودکار (پیشنهادی)
 
 ```bash
 git clone https://github.com/ansariaiadmin/aark-kernel.git
@@ -20,272 +47,304 @@ chmod +x install.sh
 ./install.sh
 ```
 
-سپس مرورگر را باز کنید و تمام! / Then open browser and done!
+جادوگر نصب از شما ایمیل و رمز ادمین را می‌پرسد، `.env` را با رمز تصادفی می‌سازد،
+و کانتینرها را بالا می‌آورد. **از نسخهٔ 3.3.0 آن ادمین واقعاً در دیتابیس ساخته می‌شود**
+و می‌توانید وارد شوید — قبلاً هیچ راهی برای ورود وجود نداشت.
 
-- **راهنمای کامل فارسی:** [`INSTALL.md`](INSTALL.md) یا [`docs/USER_GUIDE_FA.md`](docs/USER_GUIDE_FA.md)
-- **Full English Guide:** [`docs/USER_GUIDE_EN.md`](docs/USER_GUIDE_EN.md)
-- **آپدیت:** `./update.sh` (بکاپ خودکار + آپدیت + سلامت چک)
-- **وضعیت:** `./status.sh` | **لاگ:** `./logs.sh` | **توقف:** `./stop.sh`
+### دستی
 
-**ویژگی‌های نسخه v1.0.4 (Strict Final 10/10 True - Consistency Fixed)::**
-- ✅ نصب خودکار تمیز (clean install) — چک Docker، ساخت .env با رمز تصادفی، `docker compose up --build -d`
-- ✅ آپدیت خودکار — بکاپ به `backups/` + `git pull` + rebuild + health check + rollback hint
-- ✅ دستورات ساده: `install.sh`, `update.sh`, `start.sh`, `stop.sh`, `status.sh`, `logs.sh`, `backup.sh`
-- ✅ ویندوز: `install.bat`, `update.bat`, etc.
-- ✅ آموزش کامل تمام بخش‌ها در `docs/USER_GUIDE_FA.md` (فارسی)
+```bash
+cp .env.example .env            # رمزها را عوض کنید
+docker compose up -d postgres redis
+cd backend && pip install -r requirements-dev.txt
+python -m app.db.init_db        # جدول‌ها + ساخت ادمین از ADMIN_EMAIL/ADMIN_PASSWORD
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-> **برای افراد کاملا غیر فنی:** فقط `install.sh` را اجرا کنید، بعد آدرس را در مرورگر باز کنید — همین! (see `INSTALL.md`)
+ترمینال دوم:
+
+```bash
+cd frontend && npm ci && npm run dev
+```
+
+### آدرس‌ها
+
+| سرویس | نشانی |
+|---|---|
+| داشبورد | http://localhost:3000 |
+| سلامت | http://localhost:8000/api/v1/health/live |
+| آمادگی (DB + Redis + Ollama) | http://localhost:8000/api/v1/health/ready |
+| مستندات API | http://localhost:8000/docs *(نیاز به `DEBUG=true`)* |
+| متریک‌ها | http://localhost:8000/api/v1/metrics |
 
 ---
 
+## ✅ بررسی سلامت (هر سه را خودتان اجرا کنید)
 
+```bash
+# بک‌اند — lint + تست
+cd backend
+ruff check .                                   # All checks passed!
+pytest tests/ -q                               # 109 passed
+python -c "from app.main import app; print(len(app.openapi()['paths']))"   # 39
+
+# فرانت — lint + type + build
+cd frontend
+npm run verify                                 # eslint ✓  tsc ✓  next build ✓
+
+# زنجیرهٔ زندهٔ کامل
+docker compose config -q && docker compose build
+```
+
+### نمونهٔ خروجی واقعی زنجیرهٔ زنده
+
+```
+GET  :3000/                                → 200   (داشبورد)
+GET  :3000/api/v1/health/live              → {"status":"alive"}      ← پروکسی Next
+POST :3000/api/v1/auth/login               → JWT صادر شد (184 کاراکتر)
+GET  :3000/api/v1/auth/me                  → {"id":1,"role":"admin","is_superuser":true}
+GET  :3000/api/v1/risk/summary  (بی‌توکن)   → 401
+GET  :3000/api/v1/risk/summary  (با توکن)   → 200
+```
 
 ---
 
-## What this proves (for freelance clients)
-
-- **Multi-model AI with production hardening:** Router supports Ollama (local), OpenAI, Anthropic, Groq with dynamic registration, conversation memory + summarization, streaming via SSE, 13 built-in tools (market, portfolio, orders, risk, news), structured JSON logging with correlation IDs, health checks (liveness/readiness), Prometheus metrics, Pydantic Settings.
-- **Real trading + risk engine:** Nobitex integration with full order lifecycle (market/limit/stop), position tracking + real-time PnL, portfolio aggregation, paper trading with real-time price (public API, no key), slippage 0.1-0.3%, rebalancing 60/30/10, VaR (Historical/Parametric/Monte Carlo), CVaR, 6 stress scenarios (crash, crypto winter), correlation + HHI concentration, dynamic position sizing (volatility targeting, risk parity).
-- **Enterprise security & real-time:** JWT (30-min expiry, HS256) + bcrypt (cost 12), RBAC (Admin/Trader/Viewer), audit logging, WebSocket manager with subscription pub/sub, multi-user isolated vaults, non-root Docker, secrets via env only.
-
----
-
-## Architecture
+## 🏗 معماری
 
 ```mermaid
 flowchart TB
-    subgraph Client
-        FE[React Dashboard<br/>page.tsx]
-        WSClient[WebSocket Client]
+    subgraph Browser
+        UI[Dashboard<br/>Next.js 16 + React 19]
     end
 
-    subgraph Backend[FastAPI Backend]
-        API[API v1<br/>health, auth, ai, trading, risk]
-        Brain[AgentBrain<br/>memory + streaming]
-        LLM[Multi-Model Router<br/>Ollama/OpenAI/Anthropic/Groq]
-        Tools[13 Tools Executor<br/>market, portfolio, orders, risk, news]
-        Trading[Nobitex Client<br/>+ Order/Portfolio Managers]
-        Paper[Paper Trader<br/>slippage + PnL]
-        Risk[Advanced Risk Engine<br/>VaR, CVaR, Stress, Correlation]
-        Auth[JWT + RBAC<br/>bcrypt]
-        WS[WebSocket Manager<br/>pub/sub]
+    subgraph FE[frontend :3000]
+        API_LIB[src/lib/api.ts<br/>apiUrl + wsUrl]
+        AUTH_LIB[src/lib/auth.ts<br/>JWT store + login]
+        RW[rewrites proxy<br/>/api/v1/* → backend]
+    end
+
+    subgraph BE[backend :8000 — FastAPI]
+        MW[CORS → RequestLogging → ErrorHandling]
+        PUB[public_router<br/>health · auth]
+        PROT[protected_router<br/>ai · trading · risk<br/>Depends JWT+RBAC]
+        RT[realtime_router<br/>ws/ws — self-auth ?token=]
+        ADHOC[ad-hoc routes<br/>agent/evaluate · nobitex · agents]
+        BRAIN[core/agent.py<br/>AgentBrain singleton]
+        VAULT[core/vault.py<br/>0700 dir / 0600 file]
+        RISK[risk_engine<br/>evaluator ← advanced]
+        TRADING[services/trading.py<br/>NobitexClient]
+        WSM[websockets/manager.py<br/>pub/sub]
     end
 
     subgraph Infra
-        PG[(PostgreSQL 16<br/>SQLAlchemy async)]
-        Redis[(Redis 7)]
-        Ollama[Ollama<br/>qwen2.5:7b]
-        Prom[Prometheus Metrics]
+        PG[(PostgreSQL 16)]
+        RD[(Redis 7)]
+        OL[Ollama qwen2.5:7b]
     end
 
-    FE --> API
-    WSClient <--> WS
-    API --> Brain
-    Brain --> LLM
-    Brain --> Tools
-    Tools --> Trading
-    Tools --> Paper
-    Tools --> Risk
-    API --> Auth
-    API --> WS
-    Trading --> PG
-    Paper --> PG
-    Risk --> PG
-    Auth --> PG
-    Brain --> Redis
-    WS --> Redis
-    LLM --> Ollama
-    API --> Prom
+    UI --> API_LIB & AUTH_LIB
+    API_LIB --> RW --> MW
+    AUTH_LIB -->|JWT| RT
+    MW --> PUB & PROT & RT & ADHOC
+    PROT --> RISK & TRADING & BRAIN
+    ADHOC --> BRAIN & VAULT
+    RT --> WSM
+    PUB --> PG
+    RISK --> PG
+    TRADING --> PG
+    BRAIN --> OL
+    WSM --> RD
 ```
 
-**Code sample — multi-model chat with tools + streaming:**
+### سه لایهٔ دسترسی
 
-```python
-from app.agent.brain import AgentBrain
-from app.agent.llm import ModelRouter
+روت‌ها بر اساس **وضعیت احراز هویت** تفکیک شده‌اند (در `app/api/v1/__init__.py`):
 
-router = ModelRouter()
-router.register("local", "ollama", "http://localhost:11434", "qwen2.5:7b")
-router.register("cloud", "openai", api_key="...")
+| روتر | محتوا | احراز هویت |
+|---|---|---|
+| `public_router` | `health/*`, `metrics`, `auth/login`, `auth/register` | بدون توکن |
+| `protected_router` | `ai/*`, `trading/*`, `risk/*` | `Depends(get_current_active_user)` |
+| `realtime_router` | `ws/ws` | خودش `?token=` را در handshake اعتبارسنجی می‌کند |
 
-brain = AgentBrain(router, memory=True)
-async for chunk in brain.stream_chat(
-    "What's my BTC position and VaR 95%?",
-    model="local",
-    tools=["portfolio_positions", "calculate_var"]
-):
-    print(chunk, end="")  # SSE streaming
-```
+> WebSocket نمی‌تواند از `OAuth2PasswordBearer` استفاده کند (هدر در درخواست
+> upgrade قابل تنظیم نیست)، پس جدا mount می‌شود.
 
 ---
 
-## Quickstart (tested)
+## 🔌 اندپوینت‌ها
+
+این جدول از `app.openapi()` **تولید** شده و با تست `test_every_documented_endpoint_is_mounted` قفل شده است.
+
+### عمومی
+
+| متد | مسیر | توضیح |
+|---|---|---|
+| GET | `/api/v1/health` | وضعیت کلی + نسخه |
+| GET | `/api/v1/health/live` | liveness probe |
+| GET | `/api/v1/health/ready` | readiness (DB, Redis, Ollama) |
+| GET | `/api/v1/metrics` | Prometheus |
+| POST | `/api/v1/auth/login` | ورود (OAuth2 form) → JWT |
+| GET | `/api/v1/nobitex/status` | وضعیت والت صرافی |
+| GET | `/api/v1/agents` | فهرست ایجنت‌های ثبت‌شده |
+
+### محافظت‌شده (Bearer JWT)
+
+| متد | مسیر | توضیح |
+|---|---|---|
+| POST | `/api/v1/auth/register` | ساخت کاربر *(فقط ADMIN)* |
+| GET/PATCH | `/api/v1/auth/me` | پروفایل جاری |
+| GET | `/api/v1/auth/users` | فهرست کاربران *(فقط ADMIN)* |
+| GET/PATCH/DELETE | `/api/v1/auth/users/{id}` | مدیریت کاربر *(فقط ADMIN)* |
+| GET | `/api/v1/trading/portfolio/balances` | موجودی‌ها |
+| GET | `/api/v1/trading/portfolio/positions` | پوزیشن‌ها |
+| GET | `/api/v1/trading/portfolio/pnl` | خلاصهٔ سود/زیان |
+| GET | `/api/v1/trading/portfolio/value` | ارزش کل به IRT |
+| POST/GET | `/api/v1/trading/orders` | ثبت / فهرست سفارش |
+| GET/DELETE | `/api/v1/trading/orders/{id}` | وضعیت / لغو سفارش |
+| POST | `/api/v1/trading/orders/batch` | ثبت دسته‌ای |
+| GET | `/api/v1/risk/var` | VaR (historical / parametric / monte_carlo) |
+| POST | `/api/v1/risk/stress-test` | ۶ سناریوی استرس |
+| GET | `/api/v1/risk/correlation` | همبستگی + HHI |
+| POST | `/api/v1/risk/validate` | اعتبارسنجی کامل پورتفولیو |
+| POST | `/api/v1/risk/position-size` | سایز پوزیشن پویا |
+| GET | `/api/v1/risk/summary` | پیکربندی و وضعیت موتور ریسک |
+| GET | `/api/v1/ai/models` | مدل‌های ثبت‌شده |
+| POST | `/api/v1/ai/models/register` | ثبت مدل جدید |
+| POST | `/api/v1/ai/agent/chat` | گفت‌وگو |
+| POST | `/api/v1/ai/agent/evaluate/stream` | SSE streaming |
+| GET | `/api/v1/ai/tools` | فهرست ابزارها |
+| WebSocket | `/api/v1/ws/ws?token=JWT` | `market.<SYMBOL>`, `portfolio`, `risk` |
+
+### نمونهٔ قابل اجرا
 
 ```bash
-# Clone
-git clone https://github.com/ansariaiadmin/aark-kernel.git
-cd aark-kernel
+TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'username=admin@aark-kernel.dev&password=<ADMIN_PASSWORD>' \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
 
-# Automated (installs Docker if missing, generates .env secrets, builds, migrates, starts)
-chmod +x install_and_run.sh
-./install_and_run.sh
-# Frontend: http://localhost:3000
-# API Docs: http://localhost:8000/docs
-# Health: http://localhost:8000/api/v1/health/ready
-# Metrics: http://localhost:8000/api/v1/metrics
+# VaR — توجه: portfolio_value الزامی است
+curl -s "http://localhost:8000/api/v1/risk/var?method=historical&portfolio_value=100000" \
+  -H "Authorization: Bearer $TOKEN"
 
-# Manual
-cp .env.example .env  # edit secrets
-docker compose up -d postgres redis
-cd backend && python -m app.db.init_db
-cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-# Separate terminal
-cd frontend && npm install && npm run dev
-
-# Tests (54 tests)
-cd backend
-pytest -q
-# 39 original risk+paper + 7 v22 zero env + 8 var_backtest+websocket mock
-pytest tests/test_risk_engine.py -q  # 25 risk
-pytest tests/test_paper_trader.py -q # 14 paper
-pytest tests/test_v22.py -q          # 7 v22 zero env via AsyncMock
-pytest tests/test_var_backtest.py -q # 8 VaR backtest + websocket mock
+# استرس‌تست — هر چهار فیلد در یک JSON body
+curl -s -X POST http://localhost:8000/api/v1/risk/validate \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"positions":{"BTCUSDT":1.0},"prices":{"BTCUSDT":60000},"daily_pnl":0,"portfolio_value":100000}'
 ```
 
 ---
 
-## Features Table
+## 🧪 تست‌ها
 
-| Level | Feature | Details | Tests |
-|-------|---------|---------|-------|
-| **L1 Hardening** | Structured logging, health, metrics, config | JSON logs + correlation IDs, liveness/readiness, Prometheus, Pydantic Settings | 5 |
-| **L2 AI** | Multi-model router, memory, streaming, tools | Ollama/OpenAI/Anthropic/Groq, auto-summarization, SSE, 13 tools | 8 |
-| **L3 Trading** | Nobitex + paper trading + websocket mock e2e | Market/limit/stop, batch, positions + PnL, WebSocket updates, paper with slippage 0.1-0.3%, Nobitex WS mock reconnection | 14+3 |
-| **L4 Risk** | VaR, CVaR, stress, correlation, sizing + backtest | Historical/Parametric/Monte Carlo VaR, 6 scenarios (crash, crypto winter), HHI, volatility targeting, VaR backtest Kupiec POF historical vs parametric | 25+5 |
-| **L5 Enterprise** | JWT, RBAC, audit, WebSocket, multi-user + v22 zero env | bcrypt cost 12, Admin/Trader/Viewer, isolated vaults, pub/sub, test_v22 AsyncMock zero env | 6+7 |
+| فایل | تعداد | پوشش |
+|---|---|---|
+| `test_api_wiring.py` | 39 | mount بودن روت‌ها، bcrypt→JWT→DB واقعی، 401/403، CORS، قرارداد body، vault 0600/0700، bootstrap ادمین |
+| `test_release_consistency.py` | 16 | یکسانی ورژن، تازگی `docs/API.md`، پوشش `.env.example` |
+| `test_risk_engine.py` | 25 | VaR سه روش، CVaR، ۶ سناریو، correlation، HHI، sizing |
+| `test_nobitex_paper_trading.py` | 14 | market/limit/stop، slippage، PnL، rebalance |
+| `test_var_backtest.py` | 8 | Kupiec POF، mock WebSocket |
+| `test_v22.py` | 7 | مسیر ایجنت + سقف ریسک ۲۰٪ |
+| **مجموع** | **109** | |
 
-## 10/10 Fixes
+تست‌های جدید به **هیچ سرویس خارجی** نیاز ندارند — SQLite واقعی و `ASGITransport`،
+بدون mock در مرز HTTP. این عمدی است: mock کردن همان چیزی بود که اجازه داد
+۲۳ اندپوینت گم‌شده و هش شکستهٔ bcrypt مدت‌ها پنهان بمانند.
 
-- **test_v22 zero env:** `backend/tests/test_v22.py` now uses `AsyncMock`+`MagicMock` + `postgresql+asyncpg` URL, zero external env, no real DB/Redis.
-- **VaR backtest:** `backend/tests/test_var_backtest.py` 8 tests: historical vs parametric similarity, violation count, Kupiec POF, cvar>=var, Nobitex websocket mock e2e price stream + reconnection + order update via paper trader.
-- **utcnow fix:** 8 files `datetime.now(timezone.utc)` replacing `utcnow()`.
-- **recharts TODO:** TradingView iframe + explicit v2 for LineChart, documented in ROADMAP.
-- **Docker:** compose healthy postgres+redis+backend+frontend, healthcheck.
-- **CI:** ruff+pytest+build+docker.
-- **Linter 0:** F403 import * fixed via side-effect import, F821 np fixed via import numpy as np, ruff 0.
-- **Security 0:** secret scan 0, .env.example complete.
-
-## Sample Output
-
-```
-$ pytest backend/tests/ -q
-......................................................
-54 passed in 1.84s
-
-$ ruff check backend/
-All checks passed!
-
-$ curl http://localhost:8000/api/v1/risk/var?method=historical
-{"var_95":1250.5,"cvar_95":1875.2,"method":"historical"}
-```
-
-## Features Table (legacy)
-
-**ASCII Demo — Risk Engine:**
-
-```
-$ curl http://localhost:8000/api/v1/risk/var?method=historical
-{
-  "var_95": 1250.50,
-  "cvar_95": 1875.20,
-  "portfolio": "$100K BTC/ETH/USDT",
-  "method": "historical",
-  "confidence": 0.95
-}
-
-$ curl -X POST http://localhost:8000/api/v1/risk/stress-test \
-  -d '{"scenario": "crypto_winter"}'
-{
-  "scenario": "crypto_winter",
-  "drawdown": "-70%",
-  "portfolio_impact": "-$42K",
-  "correlation_spike": "0.3->0.9"
-}
+```bash
+cd backend && pytest tests/ -q
 ```
 
 ---
 
-## API Endpoints
+## 🔐 امنیت
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/health/live` | Liveness probe |
-| GET | `/api/v1/health/ready` | Readiness (DB, Redis, Ollama) |
-| GET | `/api/v1/metrics` | Prometheus |
-| POST | `/api/v1/auth/login` | JWT login |
-| GET | `/api/v1/ai/models` | List models |
-| POST | `/api/v1/ai/agent/chat` | Chat with tools |
-| POST | `/api/v1/ai/agent/evaluate/stream` | SSE streaming |
-| POST | `/api/v1/trading/orders` | Place order |
-| GET | `/api/v1/trading/portfolio/pnl` | PnL |
-| GET | `/api/v1/risk/var` | VaR 3 methods |
-| POST | `/api/v1/risk/stress-test` | 6 scenarios |
+- **bcrypt مستقیم** (cost 12) — passlib حذف شد چون با `bcrypt>=4.1` می‌شکست
+- **JWT HS256** با انقضای ۳۰ دقیقه، claimهای `sub`/`iat`/`exp`/`role`
+- **RBAC**: Admin / Trader / Viewer + `is_superuser`
+- **والیت کلید صرافی**: پوشه `0700`، فایل `0600`، نوشتن اتمیک، بیرون از دیتابیس
+- **CORS** محدود به `BACKEND_CORS_ORIGINS`
+- **Audit log** برای ورود موفق/ناموفق و همهٔ تغییرات کاربر
+- **کانتینر non-root** (`appuser` 1001، `nextjs` 1001)
+- **بدون رمز پیش‌فرض**: `API_SECRET_KEY` با `min_length=32` اجباری است
+- **bootstrap ادمین** رمز کوتاه‌تر از ۱۲ کاراکتر را رد می‌کند
 
-WebSocket: `WS /api/v1/ws/ws?token=<JWT>` — subscribe `market.BTCUSDT`, `portfolio`, `risk`
+⚠️ **شناخته‌شده و ثبت‌شده در ROADMAP فاز ۱:** روت‌های ad-hoc در `main.py`
+(از جمله `POST /api/v1/nobitex/save-key`) هنوز بدون احراز هویت هستند.
+تا زمان بسته‌شدن فاز ۱، بک‌اند را فقط پشت reverse proxy با احراز هویت
+یا روی `127.0.0.1` در معرض شبکه قرار دهید (`docker-compose.yml` به‌طور
+پیش‌فرض همین کار را می‌کند).
 
 ---
 
-## Project Structure
+## 🗺 نقشهٔ راه
+
+جزئیات کامل و تسک‌به‌تسک در [`ROADMAP.md`](ROADMAP.md).
+
+| فاز | هدف | وضعیت |
+|---|---|---|
+| **۰** | یکپارچگی ساخت و سیم‌کشی | ✅ **بسته شد — v3.3.0** |
+| **۱** | صحت مستندات + سخت‌سازی امنیتی | 🔜 v3.4.0 |
+| **۲** | واقعی‌سازی لایهٔ داده و ایجنت | 📋 v3.5.0 |
+| **۳** | بلوغ محصول و عملیات (PWA، Wizard، چارت واقعی) | 📋 v4.0.0 |
+
+هر فاز با یک **دروازهٔ انتشار** بسته می‌شود؛ تا سبز نشدن آن، ورژن bump نمی‌شود.
+
+---
+
+## 📁 ساختار پروژه
 
 ```
-backend/
-  app/
-    api/v1/          health, ai, trading, risk, auth
-    agent/           brain.py (memory+streaming), llm.py (router), tools.py (13 tools)
-    risk_engine/     advanced.py (VaR, stress, correlation)
-    services/        trading.py (Nobitex), paper_trader.py
-    db/              session.py (async), models.py, init_db.py
-    core/            config.py (Pydantic), logging.py (JSON), auth.py (JWT)
-    middleware/      logging + error handling
-    websockets/      manager.py pub/sub
-    main.py          FastAPI entry
-  tests/             39 tests
-frontend/
-  src/app/page.tsx   React dashboard
-docker-compose.yml
-install_and_run.sh
+backend/app/
+  main.py               نقطهٔ ورود + lifespan + روت‌های ad-hoc
+  api/v1/               __init__ (public/protected/realtime) · ai · auth · health · risk · trading
+  core/                 config · auth · logging · agent (brain singleton) · vault
+  agent/                brain · llm (ModelRouter) · tools · registry
+  risk_engine/          advanced (VaR/stress) · evaluator (منبع حقیقت محدودیت‌ها)
+  services/             trading (Nobitex) · paper_trader · notification/ · sms/
+  db/                   session · models (۷ جدول) · init_db (+ bootstrap_admin)
+  middleware/           logging + error handling
+  websockets/           manager (pub/sub)
+frontend/src/
+  app/                  layout.tsx · page.tsx · globals.css
+  components/           LineChart · OrderBook
+  lib/                  api.ts (apiUrl/wsUrl) · auth.ts (JWT store)
 ```
 
-## Security
+---
 
-- JWT 30-min expiry, HS256, bcrypt cost 12
-- API Key Vault permissions 600
-- CORS restricted, audit trail, non-root Docker, secrets via env only
+## 🛠 دستورات روزانه
+
+| دستور | کار |
+|---|---|
+| `./install.sh` | نصب کامل + ساخت `.env` + بالا آوردن کانتینرها |
+| `./update.sh` | بکاپ خودکار + `git pull` + rebuild + health check |
+| `./status.sh` | وضعیت سرویس‌ها |
+| `./logs.sh` | لاگ زنده |
+| `./backup.sh` | بکاپ (نگه‌داشتن ۷ نسخهٔ آخر) |
+| `./stop.sh` | توقف |
+| `./smoke-test.sh` | تست زنجیرهٔ کامل |
+
+نسخهٔ ویندوز: `install.bat`, `update.bat`, `start.bat`, `stop.bat`, `status.bat`, `logs.bat`, `backup.bat`
+
+---
+
+## 📚 مستندات
+
+| فایل | محتوا |
+|---|---|
+| [`docs/AUDIT.md`](docs/AUDIT.md) | ممیزی ابعادی کامل درخت و سیم‌کشی — ۴۵ یافته با شاهد |
+| [`ROADMAP.md`](ROADMAP.md) | تسک‌بندی فازها + دروازه‌های انتشار |
+| [`CHANGELOG.md`](CHANGELOG.md) | تاریخچهٔ تغییرات |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | معماری و اتصالات |
+| [`INSTALL.md`](INSTALL.md) | راهنمای نصب فارسی |
+| [`docs/USER_GUIDE_FA.md`](docs/USER_GUIDE_FA.md) · [`docs/USER_GUIDE_EN.md`](docs/USER_GUIDE_EN.md) | راهنمای کاربر |
+| [`SECURITY.md`](SECURITY.md) | سیاست امنیتی |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | راهنمای مشارکت |
+| [`AGENTS.md`](AGENTS.md) | فهرست ایجنت‌ها |
+
+---
 
 ## License
 
 MIT — see [LICENSE](LICENSE)
-## 🧙‍♂️ Setup Wizard v3.1.0 — پشتیبانی صفر — تاریکی روشن شد
-
-**تاریکی‌های روشن شده:**
-- ✅ install.bat ویندوز — پشتیبانی صفر — مثل install.sh — برای مامان بزرگ ویندوزی
-- ✅ .env permission 600 — امن — فقط خودت می‌تونی بخونی — تاریکی روشن شد
-- ✅ رمز ادمین امن — نه پیش‌فرض — تاریکی روشن شد
-- ✅ SMS واقعی — Ghasedak/Kavenegar با API واقعی — نه mock — با تست واقعی + اعتبار — هزینه هر پیامک ~120 تومان — تاریکی روشن شد
-- ✅ هزینه — هر جا پولی باشه می‌گم — mock رایگان — تاریکی روشن شد
-- ✅ idempotency — اگر دوباره بزنی نمی‌پره — keep/new/backup — تاریکی روشن شد
-- ✅ disk/port check — اگر دیسک 80% پر هشدار — اگر پورت اشغال هشدار — تاریکی روشن شد
-- ✅ fallback — اگر SMS fail شد in_app+email می‌ره — تاریکی روشن شد
-- ✅ throttling — اگر 5 SMS در 1 دقیقه بیاد خلاصه می‌شه — هزینه کنترل — تاریکی روشن شد
-- ✅ status.sh v3.1.0 — health check پرووایدرها + اعتبار + تست واقعی Telegram + disk — تاریکی روشن شد
-- ✅ smoke-test.sh v3.1.0 — تست کامل — SMS تست به خودت + Telegram تست — هزینه داره — تاریکی روشن شد
-- ✅ Web Setup Wizard /setup — بدون ترمینال — برای مامان بزرگ واقعی — v4.0.0 — تاریکی روشن شد
-
-
-
-```bash
-./install.sh — جادوگر v3.1.0 — پشتیبانی صفر — تاریکی روشن شد
-./status.sh — وضعیت + پرووایدرها + اعتبار — تاریکی روشن شد
-./smoke-test.sh — تست کامل — تاریکی روشن شد
-```
-

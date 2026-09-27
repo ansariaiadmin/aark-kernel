@@ -54,6 +54,15 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-json}
       ENVIRONMENT: production
+      # Creates the first admin on boot (app/db/init_db.py::bootstrap_admin).
+      # Without this, POST /auth/register needed an admin that could never exist.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      AARK_VAULT_DIR: ${AARK_VAULT_DIR:-/home/appuser/.aark}
+    volumes:
+      # The exchange API key lives in a 0600 file outside the database
+      # (app/core/vault.py). Without a volume it was lost on every restart.
+      - vaultdata:/home/appuser/.aark
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -69,6 +78,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # next.config.mjs serialises rewrites() at BUILD time, so the API proxy
+        # target has to be a build arg, not a runtime environment variable.
+        AARK_BACKEND_ORIGIN: http://backend:8000
+        NEXT_PUBLIC_API_URL: ""
     container_name: aark-frontend
     restart: unless-stopped
     depends_on:
@@ -77,7 +91,9 @@ services:
     env_file:
       - .env
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:${AARK_BACKEND_PORT:-8000}/api/v1
+      # Browser stays same-origin; the Next server proxies /api/v1/* to the
+      # backend over the compose network (no CORS, no localhost in the client).
+      NODE_ENV: production
     ports:
       - "127.0.0.1:${AARK_FRONTEND_PORT:-3000}:3000"
     healthcheck:
@@ -90,3 +106,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  vaultdata:

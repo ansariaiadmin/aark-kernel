@@ -1,18 +1,20 @@
-import json
 import os
 import re
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, constr
 
-from app.agent.brain import AgentBrain
 from app.agent.registry import AgentConfig, AgentMessage, agent_registry
-from app.api.v1 import health
+from app.api.v1 import protected_router, public_router, realtime_router
+from app.core.agent import brain
+from app.core.auth import get_current_active_user
 from app.core.config import get_settings
 from app.core.logging import get_logger, setup_logging
+from app.core.vault import clear_vault_token, ensure_vault_dir, get_vault_token, save_vault_token
 from app.db.init_db import init_db
 from app.db.session import engine
 from app.middleware.logging import setup_middleware
@@ -31,6 +33,7 @@ async def lifespan(app: FastAPI):
     logger = get_logger(__name__)
     logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
 
+    ensure_vault_dir()
     await init_db()
 
     logger.info("Application startup complete")
@@ -51,19 +54,35 @@ app = FastAPI(
 
 setup_middleware(app)
 
-app.include_router(health.router, prefix=settings.API_V1_PREFIX)
+# CORS. `BACKEND_CORS_ORIGINS` was dead config: no CORSMiddleware was ever
+# registered, so the Next.js dashboard on :3000 could not call the API on :8000
+# from a browser at all (ARCHITECTURE.md claimed "CORS restricted").
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Correlation-ID", "X-Process-Time"],
+)
 
-brain = AgentBrain()
+# ---------------------------------------------------------------------------
+# API v1 surface — mounted exactly once, split by authentication posture.
+# ---------------------------------------------------------------------------
+app.include_router(public_router, prefix=settings.API_V1_PREFIX)
+app.include_router(
+    protected_router,
+    prefix=settings.API_V1_PREFIX,
+    dependencies=[Depends(get_current_active_user)],
+)
+app.include_router(realtime_router, prefix=settings.API_V1_PREFIX)
+
 risk_profile = RiskProfile(
     max_portfolio_allocation_irt=settings.MAX_PORTFOLIO_ALLOCATION_IRT,
     max_single_trade_pct=settings.MAX_SINGLE_TRADE_PCT,
     max_daily_loss_pct=settings.MAX_DAILY_LOSS_PCT,
 )
 
-CONFIG_DIR = os.path.expanduser("~/.aark")
-CONFIG_FILE = os.path.join(CONFIG_DIR, "nobitex.vault")
-
-os.makedirs(CONFIG_DIR, mode=0o700, exist_ok=True)
 
 
 class EvaluateRequest(BaseModel):
@@ -73,17 +92,6 @@ class EvaluateRequest(BaseModel):
 
 class NobitexKeyRequest(BaseModel):
     api_key: constr(strip_whitespace=True, min_length=20, max_length=100)
-
-
-def get_vault_token() -> str:
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, "r") as f:
-                data = json.load(f)
-                return data.get("api_key", "")
-        except Exception:  # noqa: BLE001
-            return ""
-    return ""
 
 
 @app.post("/api/v1/agent/evaluate")
@@ -137,12 +145,28 @@ async def nobitex_status():
 
 @app.post("/api/v1/nobitex/save-key")
 async def save_nobitex_key(req: NobitexKeyRequest):
-    with open(CONFIG_FILE, "w") as f:
-        json.dump({"api_key": req.api_key}, f)
-    os.chmod(CONFIG_FILE, 0o600)
+    # Was writing the vault with open()+chmod() inline, duplicating the logic
+    # now centralised in app.core.vault (and racing with the 0600 mode).
+    try:
+        save_vault_token(req.api_key)
+    except OSError as exc:
+        logger = get_logger(__name__)
+        logger.error("Vault write failed: %s", exc)
+        raise HTTPException(status_code=500, detail="ذخیره کلید در والت امن ممکن نشد") from exc
     return {
         "status": "ok",
         "message": "کلید در والت امن هسته با دسترسی ایزوله ذخیره شد",
+    }
+
+
+@app.delete("/api/v1/nobitex/key")
+async def remove_nobitex_key():
+    """Forget the stored API key (kill-switch for exchange access)."""
+    removed = clear_vault_token()
+    return {
+        "status": "ok",
+        "removed": removed,
+        "message": "کلید API از والت حذف شد" if removed else "کلیدی برای حذف وجود نداشت",
     }
 
 

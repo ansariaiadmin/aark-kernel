@@ -3,8 +3,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShieldCheck, Activity, Terminal, Play, Square, Cpu, 
   Wifi, WifiOff, Send, TrendingUp, AlertTriangle,
-  Loader2, Wallet, Zap, Brain
+  Loader2, Wallet, Zap, Brain, Lock, LogOut
 } from 'lucide-react';
+import { apiUrl, wsUrl } from '@/lib/api';
+import { authFetch, getToken, getUser, login, logout, type SessionUser } from '@/lib/auth';
+import { LineChart } from '@/components/LineChart';
+import { OrderBook } from '@/components/OrderBook';
 
 interface MarketData {
   symbol: string;
@@ -50,7 +54,22 @@ interface AgentMessage {
 
 const toFa = (n: number) => n.toLocaleString('fa-IR');
 
+type TabId = 'chat' | 'orders' | 'positions' | 'analytics';
+
 export default function Dashboard() {
+  // --- session -----------------------------------------------------------
+  // `aark_token` used to be *read* here but never *written* anywhere in the
+  // app, so the WebSocket never connected and every real-time panel stayed
+  // empty forever. Login now owns that key.
+  const [session, setSession] = useState<SessionUser | null>(null);
+  const [bootstrapped, setBootstrapped] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginBusy, setLoginBusy] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<TabId>('chat');
+
   const [logs, setLogs] = useState<string[]>([
     '[SYSTEM] AARK Engine initialized on Ubuntu 24.04.',
     '[ORCHESTRATOR] Node healthy. Snapshot fetched: BTC/IRT spread: 0.08%. Risk state: Clean.',
@@ -80,8 +99,8 @@ export default function Dashboard() {
     volume24h: 0
   });
   
-  const [_orders, setOrders] = useState<Order[]>([]);
-  const [_positions, setPositions] = useState<Position[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
   const [riskMetrics, setRiskMetrics] = useState<RiskMetric[]>([]);
   const [chatMessages, setChatMessages] = useState<AgentMessage[]>([
     { role: 'assistant', content: 'درود ممد جان. ساعت معاملاتی تهران و سشن‌های لندن، نیویورک و توکیو سنکرون شدند. چارت زنده BTCUSDT بدون قطعی متصل است. سناریو یا تحلیل مد نظرت را بفرست.', timestamp: new Date().toISOString() }
@@ -89,7 +108,7 @@ export default function Dashboard() {
   const [chatInput, setChatInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
-  const [_ws, setWs] = useState<WebSocket | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -100,45 +119,71 @@ export default function Dashboard() {
     scrollToBottom();
   }, [chatMessages]);
 
-  // WebSocket connection
+  // ---------------------------------------------------------------------
+  // WebSocket — real-time layer.
+  //
+  // Was hardcoded to `ws://localhost:8000` (breaks behind any proxy/preview
+  // host and on https pages, where a mixed-content ws:// is blocked outright)
+  // and gated on a token that was never stored. Now derived via wsUrl() and
+  // re-run whenever the session changes, with bounded reconnect/backoff.
+  // ---------------------------------------------------------------------
   useEffect(() => {
-    const token = localStorage.getItem('aark_token');
-    if (!token) return;
-
-    const websocket = new WebSocket(`ws://localhost:8000/api/v1/ws/ws?token=${token}`);
-    setWs(websocket);
-
-    websocket.onopen = () => {
-      setWsConnected(true);
-      addLog('[WS] Real-time connection established');
-      // Subscribe to market data
-      websocket.send(JSON.stringify({ type: 'subscribe', topic: 'market.BTCUSDT' }));
-      websocket.send(JSON.stringify({ type: 'subscribe', topic: 'portfolio' }));
-      websocket.send(JSON.stringify({ type: 'subscribe', topic: 'risk' }));
-    };
-
-    websocket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        handleWebSocketMessage(data);
-      } catch {
-      console.error('WS parse error');
-      }
-    };
-
-    websocket.onclose = () => {
+    const token = getToken();
+    if (!token) {
       setWsConnected(false);
-      addLog('[WS] Connection closed');
+      return;
+    }
+
+    let cancelled = false;
+    let socket: WebSocket | null = null;
+    let retry = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const connect = () => {
+      if (cancelled) return;
+      socket = new WebSocket(wsUrl('/api/v1/ws/ws', { token }));
+      wsRef.current = socket;
+
+      socket.onopen = () => {
+        retry = 0;
+        setWsConnected(true);
+        addLog('[WS] Real-time connection established');
+        for (const topic of ['market.BTCUSDT', 'portfolio', 'risk']) {
+          socket?.send(JSON.stringify({ type: 'subscribe', topic }));
+        }
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          handleWebSocketMessage(JSON.parse(event.data));
+        } catch (err) {
+          addLog('[WS] parse error: ' + String(err), 'error');
+        }
+      };
+
+      socket.onclose = () => {
+        setWsConnected(false);
+        if (cancelled) return;
+        retry += 1;
+        const delay = Math.min(1000 * 2 ** retry, 30000);
+        addLog(`[WS] Connection closed — retry ${retry} in ${Math.round(delay / 1000)}s`, 'warning');
+        timer = setTimeout(connect, delay);
+      };
+
+      socket.onerror = () => {
+        addLog('[WS] Connection error', 'error');
+      };
     };
 
-    websocket.onerror = (_err) => {
-      addLog('[WS] Connection error');
-    };
+    connect();
 
     return () => {
-      websocket.close();
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      socket?.close();
+      wsRef.current = null;
     };
-  }, []);
+  }, [session]);
 
   const handleWebSocketMessage = (data: any) => {
     switch (data.type) {
@@ -191,18 +236,59 @@ export default function Dashboard() {
     setLogs(prev => [...prev.slice(-49), `${prefix} ${msg}`]);
   };
 
-  // Fetch initial data
+  // ---------------------------------------------------------------------
+  // Session bootstrap: restore a stored JWT, then load portfolio data.
+  // Previously `fetchInitialData()` ran unconditionally on mount against
+  // endpoints that require a Bearer token, so it always failed with 401 and
+  // the dashboard silently showed zeros.
+  // ---------------------------------------------------------------------
   useEffect(() => {
-    fetchInitialData();
+    if (getToken()) {
+      setSession(getUser() ?? ({ id: 0, email: '', full_name: null, role: '', is_active: true, is_superuser: false } as SessionUser));
+    }
+    setBootstrapped(true);
   }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    fetchInitialData();
+    checkVault();
+  }, [session]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginBusy(true);
+    setLoginError('');
+    try {
+      const user = await login(loginEmail.trim(), loginPassword);
+      setLoginPassword('');
+      setSession(user);
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : 'خطای نامشخص در ورود');
+    } finally {
+      setLoginBusy(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    wsRef.current?.close();
+    wsRef.current = null;
+    setSession(null);
+    setWsConnected(false);
+    setOrders([]);
+    setPositions([]);
+    setRiskMetrics([]);
+    addLog('[AUTH] Session ended');
+  };
 
   const fetchInitialData = async () => {
     try {
       const [balancesRes, positionsRes, ordersRes, riskRes] = await Promise.all([
-        fetch('/api/v1/trading/portfolio/balances').catch(() => null),
-        fetch('/api/v1/trading/portfolio/positions').catch(() => null),
-        fetch('/api/v1/trading/orders').catch(() => null),
-        fetch('/api/v1/risk/validate', {
+        authFetch('/api/v1/trading/portfolio/balances').catch(() => null),
+        authFetch('/api/v1/trading/portfolio/positions').catch(() => null),
+        authFetch('/api/v1/trading/orders').catch(() => null),
+        authFetch('/api/v1/risk/validate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ positions: {}, prices: {}, daily_pnl: 0, portfolio_value: walletBalance })
@@ -223,14 +309,14 @@ export default function Dashboard() {
         const risk = await riskRes.json();
         setRiskMetrics(risk.metrics);
       }
-    } catch {
-      addLog('Failed to fetch initial data: ' + String(_e), 'error');
+    } catch (err) {
+      addLog('Failed to fetch initial data: ' + String(err), 'error');
     }
   };
 
   const checkVault = async () => {
     try {
-      const res = await fetch('/api/v1/nobitex/status');
+      const res = await fetch(apiUrl('/api/v1/nobitex/status'));
       const data = await res.json();
       if (data.connected) {
         setVaultStatus('connected');
@@ -253,7 +339,7 @@ export default function Dashboard() {
     }
     setVaultLog('در حال اعتبارسنجی و ایزوله‌سازی...');
     try {
-      const res = await fetch('/api/v1/nobitex/save-key', {
+      const res = await fetch(apiUrl('/api/v1/nobitex/save-key'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ api_key: apiKey })
@@ -277,7 +363,7 @@ export default function Dashboard() {
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/v1/agent/evaluate', {
+      const res = await fetch(apiUrl('/api/v1/agent/evaluate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -304,9 +390,9 @@ export default function Dashboard() {
     }
   };
 
-  const _placeOrder = async (side: 'buy' | 'sell') => {
+  const placeOrder = async (side: 'buy' | 'sell') => {
     try {
-      const res = await fetch('/api/v1/trading/orders', {
+      const res = await authFetch('/api/v1/trading/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -321,8 +407,41 @@ export default function Dashboard() {
         addLog(`[ORDER] ${side.toUpperCase()} order placed: ${data.order_id}`);
         fetchInitialData();
       }
-    } catch {
-      addLog('Order failed: ' + String(_e), 'error');
+    } catch (err) {
+      addLog('Order failed: ' + String(err), 'error');
+    }
+  };
+
+  // Kill switch: cancel every open order, then drop the exchange credential so
+  // nothing new can be submitted. Wired to the header button, which previously
+  // had no onClick handler at all.
+  const [killing, setKilling] = useState(false);
+  const killSwitch = async () => {
+    if (killing) return;
+    if (!window.confirm('Kill Switch: تمام سفارش‌های باز لغو و کلید صرافی حذف می‌شود. ادامه؟')) return;
+
+    setKilling(true);
+    addLog('[KILL SWITCH] engaged', 'warning');
+    try {
+      const open = orders.filter(o => o.status === 'pending' || o.status === 'submitted' || o.status === 'partial');
+      const results = await Promise.allSettled(
+        open.map(o => authFetch(`/api/v1/trading/orders/${encodeURIComponent(o.id)}`, { method: 'DELETE' }))
+      );
+      const cancelled = results.filter(r => r.status === 'fulfilled' && r.value.ok).length;
+      addLog(`[KILL SWITCH] ${cancelled}/${open.length} open order(s) cancelled`, cancelled === open.length ? 'info' : 'warning');
+
+      const res = await fetch(apiUrl('/api/v1/nobitex/key'), { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      addLog(`[KILL SWITCH] vault: ${data.message ?? res.status}`, res.ok ? 'info' : 'error');
+
+      setVaultStatus('disconnected');
+      setVaultEmail('');
+      setVaultLog('کلید صرافی حذف شد — Kill Switch فعال');
+      await fetchInitialData();
+    } catch (err) {
+      addLog('[KILL SWITCH] failed: ' + String(err), 'error');
+    } finally {
+      setKilling(false);
     }
   };
 
@@ -381,6 +500,85 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
+  if (!bootstrapped) {
+    return (
+      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center font-sans">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+      </main>
+    );
+  }
+
+  if (!session) {
+    // The trading/AI/risk surface is JWT-protected, so the dashboard has to
+    // authenticate before it can show anything real.
+    return (
+      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6 font-sans">
+        <form
+          onSubmit={handleLogin}
+          className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 space-y-5"
+        >
+          <div className="flex items-center gap-3">
+            <Cpu className="w-7 h-7 text-emerald-400" />
+            <div>
+              <h1 className="text-xl font-bold text-emerald-400 tracking-tight">AARK Kernel</h1>
+              <p className="text-xs text-slate-400">Control Center — ورود اپراتور</p>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="email" className="text-xs text-slate-400 block">ایمیل</label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="username"
+              required
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+              placeholder="admin@aark-kernel.dev"
+              className="w-full bg-slate-950 border border-slate-700 text-white px-3 py-2 rounded-lg text-sm focus:border-emerald-400 focus:outline-none"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="password" className="text-xs text-slate-400 block">رمز عبور</label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              placeholder="••••••••••••"
+              className="w-full bg-slate-950 border border-slate-700 text-white px-3 py-2 rounded-lg text-sm focus:border-emerald-400 focus:outline-none"
+            />
+          </div>
+
+          {loginError && (
+            <div className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg p-3 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-px" />
+              <span>{loginError}</span>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loginBusy || !loginEmail.trim() || !loginPassword}
+            className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-2.5 rounded-lg text-sm transition"
+          >
+            {loginBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+            ورود به هسته
+          </button>
+
+          <p className="text-[11px] text-slate-500 leading-relaxed">
+            حساب ادمین از <code className="text-slate-400">ADMIN_EMAIL</code> /{' '}
+            <code className="text-slate-400">ADMIN_PASSWORD</code> در فایل <code className="text-slate-400">.env</code>{' '}
+            هنگام اولین راه‌اندازی ساخته می‌شود.
+          </p>
+        </form>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
       <header className="flex justify-between items-center pb-6 border-b border-slate-800">
@@ -391,16 +589,34 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <span className={wsConnected ? 'text-emerald-400' : 'text-rose-400'}>{wsConnected ? '● LIVE' : '○ OFFLINE'}</span>
-            <span>| Host: Ubuntu-24.04 LTS</span>
-            <span>| v2.2.0 Enterprise</span>
+            <span>| {session.email}</span>
+            <span className="uppercase">| {session.role}</span>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition" disabled={isLoading}>
-            <Play className="w-4 h-4" /> Start Engine
+          {/* Both buttons were inert before — no onClick at all. */}
+          <button
+            type="button"
+            onClick={fetchInitialData}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50"
+            disabled={isLoading}
+          >
+            <Play className="w-4 h-4" /> Refresh Engine
           </button>
-          <button className="flex items-center gap-2 bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+          <button
+            type="button"
+            onClick={killSwitch}
+            className="flex items-center gap-2 bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+          >
             <Square className="w-4 h-4" /> Kill Switch
+          </button>
+          <button
+            type="button"
+            onClick={handleLogout}
+            title="خروج از حساب"
+            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-sm font-medium transition"
+          >
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </header>
@@ -600,25 +816,145 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Chat & Orders Tabs */}
+          {/* Tabs — the buttons used to render but had no onClick and no
+              active state, so 'orders' and 'positions' were unreachable and the
+              fetched data was discarded into `_orders` / `_positions`. */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-            <div className="flex border-b border-slate-800 bg-slate-950">
-              {['chat', 'orders', 'positions'].map(tab => (
+            <div className="flex border-b border-slate-800 bg-slate-950" role="tablist">
+              {([
+                { id: 'chat', label: 'Chat', Icon: Terminal },
+                { id: 'orders', label: 'Orders', Icon: Activity },
+                { id: 'positions', label: 'Positions', Icon: TrendingUp },
+                { id: 'analytics', label: 'Analytics', Icon: Brain },
+              ] as const).map(({ id, label, Icon }) => (
                 <button
-                  key={tab}
-                  className="flex-1 py-3 px-4 text-sm font-medium text-center transition-colors"
-                  style={{ color: 'white' }}
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === id}
+                  onClick={() => setActiveTab(id)}
+                  className={`flex-1 py-3 px-4 text-sm font-medium text-center transition-colors border-b-2 ${
+                    activeTab === id
+                      ? 'text-cyan-400 border-cyan-400 bg-slate-900'
+                      : 'text-slate-400 border-transparent hover:text-slate-200'
+                  }`}
                 >
-                  {tab === 'chat' && <Terminal className="w-4 h-4 inline mr-1" />}
-                  {tab === 'orders' && <Activity className="w-4 h-4 inline mr-1" />}
-                  {tab === 'positions' && <TrendingUp className="w-4 h-4 inline mr-1" />}
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  <Icon className="w-4 h-4 inline ml-1" />
+                  {label}
+                  {id === 'orders' && orders.length > 0 && (
+                    <span className="mr-1 text-[10px] bg-slate-800 text-slate-300 rounded-full px-1.5">{orders.length}</span>
+                  )}
+                  {id === 'positions' && positions.length > 0 && (
+                    <span className="mr-1 text-[10px] bg-slate-800 text-slate-300 rounded-full px-1.5">{positions.length}</span>
+                  )}
                 </button>
               ))}
             </div>
 
             <div className="p-4">
-              {/* Chat Tab */}
+              {activeTab === 'orders' && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-400">سفارش سریع BTCUSDT — market 0.001</span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => placeOrder('buy')}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                      >
+                        BUY
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => placeOrder('sell')}
+                        className="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                      >
+                        SELL
+                      </button>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto bg-slate-950 rounded-lg border border-slate-800">
+                    <table className="w-full text-xs">
+                      <thead className="text-slate-400 border-b border-slate-800">
+                        <tr>
+                          {['Symbol', 'Side', 'Type', 'Qty', 'Price', 'Status', 'Time'].map(h => (
+                            <th key={h} className="text-right px-3 py-2 font-medium whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {orders.length === 0 && (
+                          <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-500">سفارشی ثبت نشده است</td></tr>
+                        )}
+                        {orders.map(o => (
+                          <tr key={o.id} className="border-b border-slate-800/60 last:border-0">
+                            <td className="px-3 py-2 font-mono text-slate-200">{o.symbol}</td>
+                            <td className={`px-3 py-2 font-bold ${o.side === 'buy' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {o.side.toUpperCase()}
+                            </td>
+                            <td className="px-3 py-2 text-slate-400">{o.type}</td>
+                            <td className="px-3 py-2 font-mono">{o.quantity}</td>
+                            <td className="px-3 py-2 font-mono">{o.price ? o.price.toLocaleString() : '—'}</td>
+                            <td className="px-3 py-2">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                o.status === 'filled' ? 'bg-emerald-500/20 text-emerald-400'
+                                : o.status === 'cancelled' || o.status === 'rejected' ? 'bg-rose-500/20 text-rose-400'
+                                : 'bg-amber-500/20 text-amber-400'
+                              }`}>{o.status}</span>
+                            </td>
+                            <td className="px-3 py-2 text-slate-500 whitespace-nowrap">
+                              {new Date(o.timestamp).toLocaleTimeString('fa-IR')}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'positions' && (
+                <div className="overflow-x-auto bg-slate-950 rounded-lg border border-slate-800">
+                  <table className="w-full text-xs">
+                    <thead className="text-slate-400 border-b border-slate-800">
+                      <tr>
+                        {['Symbol', 'Side', 'Qty', 'Entry', 'Mark', 'Unrealized PnL', 'Realized PnL'].map(h => (
+                          <th key={h} className="text-right px-3 py-2 font-medium whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {positions.length === 0 && (
+                        <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-500">پوزیشن بازی وجود ندارد</td></tr>
+                      )}
+                      {positions.map(pos => (
+                        <tr key={pos.symbol} className="border-b border-slate-800/60 last:border-0">
+                          <td className="px-3 py-2 font-mono text-slate-200">{pos.symbol}</td>
+                          <td className="px-3 py-2 text-slate-400">{pos.side}</td>
+                          <td className="px-3 py-2 font-mono">{pos.quantity}</td>
+                          <td className="px-3 py-2 font-mono">{pos.entryPrice.toLocaleString()}</td>
+                          <td className="px-3 py-2 font-mono">{pos.markPrice.toLocaleString()}</td>
+                          <td className={`px-3 py-2 font-mono font-bold ${pos.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {pos.unrealizedPnl >= 0 ? '+' : ''}{pos.unrealizedPnl.toLocaleString()}
+                          </td>
+                          <td className={`px-3 py-2 font-mono ${pos.realizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {pos.realizedPnl.toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {activeTab === 'analytics' && (
+                <div className="space-y-4">
+                  <LineChart />
+                  <OrderBook />
+                </div>
+              )}
+
+              {activeTab === 'chat' && (
               <div className="space-y-4">
                 <div className="font-mono text-xs text-slate-300 space-y-2 bg-slate-950 p-4 rounded-lg h-64 overflow-y-auto">
                   {chatMessages.map((msg, idx) => (
@@ -653,6 +989,7 @@ export default function Dashboard() {
                   </button>
                 </form>
               </div>
+              )}
             </div>
           </div>
         </div>

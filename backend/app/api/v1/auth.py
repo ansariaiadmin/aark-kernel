@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import (
+    ACCESS_TOKEN_TTL_MINUTES,
     Token,
     User,
     UserCreate,
@@ -53,7 +54,7 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token_expires = timedelta(minutes=30)
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_TTL_MINUTES)
     access_token = create_access_token(
         data={"sub": str(user.id), "role": user.role.value, "permissions": []},
         expires_delta=access_token_expires,
@@ -72,7 +73,11 @@ async def login(
         user_agent=client_info["user_agent"],
     )
 
-    return Token(access_token=access_token, token_type="bearer", expires_in=1800)
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=ACCESS_TOKEN_TTL_MINUTES * 60,
+    )
 
 
 @router.post("/auth/register", response_model=UserResponse)
