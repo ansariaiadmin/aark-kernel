@@ -117,12 +117,21 @@ jobs:
         run: |
           python - <<'PYEOF'
           import pathlib, re, sys
-          compose = pathlib.Path("docker-compose.yml").read_text()
+
+          # Strip comment lines first: the header of docker-compose.yml explains
+          # the rule itself using "${VAR}" as a placeholder, which is not a real
+          # reference and must not be treated as one.
+          compose_raw = pathlib.Path("docker-compose.yml").read_text()
+          compose = "\n".join(
+              line for line in compose_raw.splitlines() if not line.lstrip().startswith("#")
+          )
           example = pathlib.Path(".env.example").read_text()
+
           documented = {m.group(1) for m in re.finditer(r"(?m)^([A-Z0-9_]+)=", example)}
           referenced = {m.group(1) for m in re.finditer(r"\$\{([A-Z0-9_]+)(?::?[-?][^}]*)?\}", compose)}
-          # Vars with an inline default are safe even if undocumented.
+          # A variable with an inline default is safe even when undocumented.
           defaulted = {m.group(1) for m in re.finditer(r"\$\{([A-Z0-9_]+):-", compose)}
+
           missing = sorted(referenced - documented - defaulted)
           if missing:
               sys.exit(f"compose references undocumented env vars: {missing}")
