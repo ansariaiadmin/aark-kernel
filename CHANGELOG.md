@@ -22,6 +22,17 @@ README / CHANGELOG / `frontend/package.json` از آن را می‌گیرد.
 - **هش پسورد رفع شد.** `passlib 1.7.4` با `bcrypt>=4.1` ناسازگار است و هر فراخوانی `get_password_hash()` با `ValueError: password cannot be longer than 72 bytes` می‌مرد → `POST /auth/register` همیشه ۵۰۰ بود و **هیچ کاربری نمی‌توانست ساخته شود**. passlib حذف و bcrypt مستقیم استفاده شد (قالب `$2b$` بدون تغییر، پس هش‌های قبلی هم verify می‌شوند).
 - **بن‌بست نصب تازه شکسته شد.** `install.sh` مقدار `ADMIN_EMAIL`/`ADMIN_PASSWORD` را در `.env` می‌نوشت ولی هیچ کدی آن کاربر را نمی‌ساخت، و `POST /auth/register` خودش به یک ADMIN موجود نیاز داشت. `bootstrap_admin()` idempotent اضافه شد (رمز <۱۲ کاراکتر را رد می‌کند، کاربر موجود را ارتقا می‌دهد، رمز را بازنویسی نمی‌کند).
 - **CI رفع شد.** `API_SECRET_KEY=test_secret_32_bytes_min_for_ci` دقیقاً ۳۱ کاراکتر بود در برابر `Field(..., min_length=32)` → کل job در مرحلهٔ *collection* می‌مرد و هیچ تستی اجرا نمی‌شد.
+- **job داکر در CI رفع شد — این یکی پیش‌تر دیده نشده بود.** هر چهار سرویس
+  `env_file: - .env` داشتند، ولی job داکر فقط `actions/checkout` می‌کرد و هیچ `.env`
+  نمی‌ساخت؛ Docker Compose v2 در نبود آن فایل با exit 1 بیرون می‌آید
+  (`env file .env not found`). یعنی `docker compose config` **هرگز** در CI پاس نشده بود.
+  اکنون `env_file` به شکل `path: .env` + `required: false` آمده (کلون تازه بدون `.env`
+  هم کار می‌کند — همهٔ مقادیر لازم در `environment:` با default تعریف شده‌اند) و job
+  داکر پیش از اعتبارسنجی یک `.env` واقعی از `.env.example` می‌سازد و placeholderهای
+  رمز را با مقدار ۳۲+ کاراکتری جایگزین می‌کند.
+- **نگهبان جدید CI:** هر `${VAR}` که `docker-compose.yml` ارجاع می‌دهد باید یا در
+  `.env.example` مستند باشد یا default درون‌خطی داشته باشد؛ وگرنه نصب تازه بی‌صدا
+  مقدار خالی می‌گیرد و job قرمز می‌شود.
 
 ### 🟠 Fixed — سیم‌کشی و قراردادها
 

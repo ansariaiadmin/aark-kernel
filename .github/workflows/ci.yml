@@ -91,8 +91,43 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Materialise .env from .env.example
+        # compose `env_file: .env` is now optional, but validating against the
+        # real documented env surface catches drift between .env.example and
+        # docker-compose.yml (e.g. a variable referenced but never documented).
+        run: |
+          cp .env.example .env
+          # Placeholders in .env.example are not valid secrets; the backend
+          # rejects an API_SECRET_KEY shorter than 32 characters at startup.
+          python - <<'PYEOF'
+          import pathlib, re, secrets
+          p = pathlib.Path(".env")
+          s = p.read_text()
+          s = re.sub(r"(?m)^(API_SECRET_KEY|POSTGRES_PASSWORD|REDIS_PASSWORD)=.*$",
+                     lambda m: f"{m.group(1)}={secrets.token_urlsafe(32)}", s)
+          p.write_text(s)
+          PYEOF
+
       - name: Docker compose config check
         run: docker compose config
+
+      - name: Fail on undocumented compose variables
+        # Every ${VAR} referenced by compose must exist in .env.example,
+        # otherwise a fresh install silently gets a blank value.
+        run: |
+          python - <<'PYEOF'
+          import pathlib, re, sys
+          compose = pathlib.Path("docker-compose.yml").read_text()
+          example = pathlib.Path(".env.example").read_text()
+          documented = {m.group(1) for m in re.finditer(r"(?m)^([A-Z0-9_]+)=", example)}
+          referenced = {m.group(1) for m in re.finditer(r"\$\{([A-Z0-9_]+)(?::?[-?][^}]*)?\}", compose)}
+          # Vars with an inline default are safe even if undocumented.
+          defaulted = {m.group(1) for m in re.finditer(r"\$\{([A-Z0-9_]+):-", compose)}
+          missing = sorted(referenced - documented - defaulted)
+          if missing:
+              sys.exit(f"compose references undocumented env vars: {missing}")
+          print(f"OK: {len(referenced)} referenced, {len(documented)} documented")
+          PYEOF
 
       - name: Build images (no push)
         run: docker compose build --no-cache backend frontend

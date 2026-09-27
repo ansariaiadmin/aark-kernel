@@ -54,6 +54,7 @@ docker compose config -q && docker compose build         # هر دو ایمیج
 | 0.18 | زنده کردن UI مرده: تب‌ها، Kill Switch، BUY/SELL، LineChart، OrderBook | `page.tsx` |
 | 0.19 | ۵۵ تست جدید (wiring + release consistency) | `tests/test_api_wiring.py`, `tests/test_release_consistency.py` |
 | 0.20 | تفکیک `requirements-dev.txt` از ایمیج پروداکشن | `backend/requirements*.txt` |
+| 0.21 | رفع شکست همیشگی job داکر در CI (`env_file: .env` اجباری بود) + نگهبان متغیرهای مستندنشدهٔ compose | `.github/workflows/ci.yml`, `docker-compose.yml` |
 
 **دروازهٔ انتشار v3.3.0:** ✅ ۱۰۹ تست · ✅ ruff 0 · ✅ tsc 0 · ✅ eslint 0 · ✅ `next build` · ✅ ۳۹ روت · ✅ زنجیرهٔ زنده (login → JWT → protected route)
 

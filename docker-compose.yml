@@ -5,7 +5,11 @@ services:
     container_name: aark-postgres
     restart: unless-stopped
     env_file:
-      - .env
+      # Optional: a fresh clone has no .env yet. Every value the app
+      # needs is also declared in `environment:` below with a default,
+      # so `docker compose config` works before install.sh runs.
+      - path: .env
+        required: false
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -23,7 +27,11 @@ services:
     container_name: aark-redis
     restart: unless-stopped
     env_file:
-      - .env
+      # Optional: a fresh clone has no .env yet. Every value the app
+      # needs is also declared in `environment:` below with a default,
+      # so `docker compose config` works before install.sh runs.
+      - path: .env
+        required: false
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     volumes:
       - redisdata:/data
@@ -45,7 +53,11 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - .env
+      # Optional: a fresh clone has no .env yet. Every value the app
+      # needs is also declared in `environment:` below with a default,
+      # so `docker compose config` works before install.sh runs.
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
@@ -89,7 +101,11 @@ services:
       backend:
         condition: service_healthy
     env_file:
-      - .env
+      # Optional: a fresh clone has no .env yet. Every value the app
+      # needs is also declared in `environment:` below with a default,
+      # so `docker compose config` works before install.sh runs.
+      - path: .env
+        required: false
     environment:
       # Browser stays same-origin; the Next server proxies /api/v1/* to the
       # backend over the compose network (no CORS, no localhost in the client).
