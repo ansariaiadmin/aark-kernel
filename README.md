@@ -257,6 +257,27 @@ cd backend && pytest tests/ -q
 
 ---
 
+## 🔄 پایپلاین CI
+
+چهار job که با هم یک status check تجمیعی به نام `ci` می‌سازند (برای branch protection):
+
+| Job | چه می‌کند |
+|---|---|
+| **Backend** | `ruff check` → `pytest tests/` (۱۰۹ تست) |
+| **Frontend** | `npm ci` → `eslint .` → `tsc --noEmit` → `next build` |
+| **Docker** | ساخت `.env` از `.env.example` → `docker compose config` → نگهبان متغیرهای مستندنشده → `docker compose build` (هر دو ایمیج) |
+| **CI** | gate تجمیعی: اگر هر کدام بالا قرمز شود، این هم قرمز است |
+
+> **نکتهٔ صادقانه:** پیش از v3.3.0 هیچ‌کدام از این jobها در CI پاس نمی‌شدند.
+> job داکر به‌طور خاص **هرگز** سبز نشده بود: همهٔ سرویس‌ها `env_file: - .env`
+> داشتند ولی آن job فقط `checkout` می‌کرد، و Compose v2 در نبود فایل با exit 1
+> بیرون می‌آید. چون هیچ‌وقت به مرحلهٔ گزارش‌دهی نمی‌رسید، دیده نشده بود.
+
+**آخرین اجرای تأییدشده:** هر ۴ job سبز —
+[actions/runs/36317849303](https://github.com/ansariaiadmin/aark-kernel/actions/runs/36317849303)
+(کامیت `dd45657`، ۲۰۲۶-۰۹-۲۷). badge بالای صفحه وضعیت شاخهٔ `main` را نشان
+می‌دهد و پس از merge سبز می‌شود.
+
 ## 🔐 امنیت
 
 - **bcrypt مستقیم** (cost 12) — passlib حذف شد چون با `bcrypt>=4.1` می‌شکست
