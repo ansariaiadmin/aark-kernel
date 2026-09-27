@@ -11,6 +11,10 @@
   var btn = document.getElementById("langBtn");
 
   /* ---------- language ---------- */
+  function currentLang() {
+    return html.getAttribute("lang") === "en" ? "en" : "fa";
+  }
+
   function apply(lang) {
     var isEn = lang === "en";
     body.classList.toggle("lang-en", isEn);
@@ -24,14 +28,14 @@
     try { localStorage.setItem(STORAGE_KEY, lang); } catch (e) { /* private mode */ }
   }
 
-  // Respect a previously stored preference; default to Persian.
-  var stored = null;
-  try { stored = localStorage.getItem(STORAGE_KEY); } catch (e) { /* ignore */ }
-  apply(stored === "en" ? "en" : "fa");
+  // The initial language is already decided by the inline script in the
+  // document head — a stored preference, otherwise the browser language.
+  // Here we only read it back so the toggle button starts in the right state.
+  apply(currentLang());
 
   if (btn) {
     btn.addEventListener("click", function () {
-      apply(body.classList.contains("lang-en") ? "fa" : "en");
+      apply(currentLang() === "en" ? "fa" : "en");
     });
   }
 

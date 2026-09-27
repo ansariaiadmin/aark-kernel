@@ -25,6 +25,29 @@
 </head>
 <body class="lang-fa">
 
+<script>
+/* Decide the language before the first paint: a stored preference wins,
+   otherwise the browser language decides. Persian-speaking visitors get the
+   RTL Persian page; everyone else — including international reviewers and
+   investors — lands on the English LTR page. This runs inline so the page
+   never flashes the wrong direction. */
+(function () {
+  "use strict";
+  var lang = null;
+  try { lang = localStorage.getItem("aark-lang"); } catch (e) { /* private mode */ }
+  if (lang !== "fa" && lang !== "en") {
+    var nav = (navigator.language || navigator.userLanguage || "en").toLowerCase();
+    lang = nav.indexOf("fa") === 0 ? "fa" : "en";
+  }
+  var en = lang === "en";
+  var html = document.documentElement;
+  html.setAttribute("lang", en ? "en" : "fa");
+  html.setAttribute("dir", en ? "ltr" : "rtl");
+  html.className = en ? "lang-en" : "lang-fa";
+  document.body.className = en ? "lang-en" : "lang-fa";
+})();
+</script>
+
 <!-- ══════════════════ NAV ══════════════════ -->
 <nav class="nav">
   <div class="nav-inner">
